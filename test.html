@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>কার্টুন গ্যালারি</title>
     <style>
         * {
@@ -11,7 +11,7 @@
             box-sizing: border-box;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 16px;
@@ -41,8 +41,6 @@
             padding: 10px 20px;
             border-radius: 40px;
             text-decoration: none;
-            font-weight: 500;
-            display: inline-block;
         }
         .controls {
             background: white;
@@ -52,7 +50,6 @@
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            align-items: center;
         }
         .search-box {
             flex: 1;
@@ -60,7 +57,6 @@
             border: 1px solid #ddd;
             border-radius: 40px;
             font-size: 1rem;
-            outline: none;
         }
         .refresh-btn {
             background: #667eea;
@@ -68,14 +64,12 @@
             border: none;
             padding: 12px 20px;
             border-radius: 40px;
-            font-weight: 500;
             cursor: pointer;
         }
         .video-count {
             background: #f0f0f0;
             padding: 8px 16px;
             border-radius: 40px;
-            font-size: 0.85rem;
         }
         .videos-grid {
             display: grid;
@@ -99,9 +93,7 @@
         }
         .video-title {
             font-weight: 600;
-            margin-bottom: 8px;
             word-break: break-word;
-            font-size: 0.95rem;
         }
         .video-meta {
             display: flex;
@@ -109,6 +101,7 @@
             align-items: center;
             font-size: 0.75rem;
             color: #888;
+            margin-top: 8px;
         }
         .delete-btn {
             background: #dc3545;
@@ -117,17 +110,12 @@
             padding: 6px 14px;
             border-radius: 30px;
             cursor: pointer;
-            font-size: 0.75rem;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: 28px;
         }
         .loader {
             text-align: center;
             padding: 60px;
+            background: white;
+            border-radius: 28px;
         }
         .loader-spinner {
             width: 44px;
@@ -142,26 +130,18 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 28px;
+        }
         @media (max-width: 600px) {
-            body {
-                padding: 12px;
-            }
             .videos-grid {
                 grid-template-columns: 1fr;
             }
-            header {
-                flex-direction: column;
-                text-align: center;
-            }
             .controls {
                 flex-direction: column;
-            }
-            .search-box {
-                width: 100%;
-            }
-            .refresh-btn, .video-count {
-                width: 100%;
-                text-align: center;
             }
         }
     </style>
@@ -180,7 +160,7 @@
         </div>
         
         <div class="videos-grid" id="videosGrid">
-            <div class="loader"><div class="loader-spinner"></div><p>ভিডিও আনা হচ্ছে...</p></div>
+            <div class="loader"><div class="loader-spinner"></div><p>ভিডিও লোড হচ্ছে...</p></div>
         </div>
     </div>
 
@@ -196,9 +176,11 @@
         async function loadVideos() {
             const grid = document.getElementById('videosGrid');
             grid.innerHTML = '<div class="loader"><div class="loader-spinner"></div><p>ভিডিও লোড হচ্ছে...</p></div>';
+            
             try {
                 const { data: files, error } = await supabase.storage.from(BUCKET_NAME).list('videos/');
                 if (error) throw error;
+                
                 const videos = [];
                 if (files && files.length) {
                     for (const file of files) {
@@ -217,19 +199,21 @@
                 allVideos = videos.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
                 displayVideos(allVideos);
             } catch (err) {
-                grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>লোড করতে সমস্যা</h3><p>${err.message}</p></div>`;
+                grid.innerHTML = `<div class="empty-state"><div style="font-size:48px;">⚠️</div><h3>লোড করতে সমস্যা</h3><p>${err.message}</p></div>`;
             }
         }
         
         function displayVideos(videos) {
             const grid = document.getElementById('videosGrid');
             document.getElementById('videoCount').innerText = `${videos.length}টি ভিডিও`;
+            
             if (videos.length === 0) {
                 grid.innerHTML = `<div class="empty-state"><div style="font-size:48px;">🎬</div><h3>কোনো ভিডিও নেই</h3><p>প্রথমে একটি আপলোড করুন</p><a href="index.html" style="background:#667eea; color:white; padding:10px 20px; border-radius:40px; text-decoration:none; display:inline-block; margin-top:15px;">আপলোড পেজে যান</a></div>`;
                 return;
             }
+            
             grid.innerHTML = videos.map(v => `
-                <div class="video-card" data-id="${v.id}">
+                <div class="video-card">
                     <video controls preload="metadata" playsinline>
                         <source src="${v.url}" type="video/mp4">
                     </video>
@@ -237,31 +221,47 @@
                         <div class="video-title">${escapeHtml(v.title)}</div>
                         <div class="video-meta">
                             <span>📅 ${new Date(v.created_at).toLocaleDateString('bn-BD')}</span>
-                            <button class="delete-btn" onclick="deleteVideo('${v.id}', '${escapeHtml(v.file_path)}')">ডিলিট</button>
+                            <button class="delete-btn" onclick="deleteVideo('${v.file_path}')">🗑️ ডিলিট</button>
                         </div>
                     </div>
                 </div>
             `).join('');
         }
         
-        function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+        function escapeHtml(str) {
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
         
-        window.deleteVideo = async function(id, filePath) {
+        window.deleteVideo = async function(filePath) {
             if (!confirm('ভিডিও মুছে ফেলবেন?')) return;
             try {
                 await supabase.storage.from(BUCKET_NAME).remove([filePath]);
                 loadVideos();
-                showToast('ডিলিট হয়েছে');
-            } catch(e) { alert('ব্যর্থ'); }
+                showToast('ভিডিও ডিলিট করা হয়েছে');
+            } catch(e) {
+                alert('ডিলিট করতে সমস্যা: ' + e.message);
+            }
         };
         
         function showToast(msg) {
             let t = document.createElement('div');
             t.innerText = msg;
-            t.style.position='fixed'; t.style.bottom='20px'; t.style.left='50%'; t.style.transform='translateX(-50%)';
-            t.style.background='#333'; t.style.color='white'; t.style.padding='10px 20px'; t.style.borderRadius='40px'; t.style.zIndex='999';
+            t.style.position = 'fixed';
+            t.style.bottom = '20px';
+            t.style.left = '50%';
+            t.style.transform = 'translateX(-50%)';
+            t.style.background = '#333';
+            t.style.color = 'white';
+            t.style.padding = '10px 20px';
+            t.style.borderRadius = '40px';
+            t.style.zIndex = '999';
             document.body.appendChild(t);
-            setTimeout(()=>t.remove(),2500);
+            setTimeout(() => t.remove(), 2500);
         }
         
         function searchVideos() {
