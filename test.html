@@ -1,277 +1,67 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>কার্টুন গ্যালারি</title>
+    <title>ভিডিও গ্যালারি</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 16px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        header {
-            background: white;
-            border-radius: 28px;
-            padding: 16px 20px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        h1 {
-            font-size: 1.5rem;
-            color: #333;
-        }
-        .back-link {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 40px;
-            text-decoration: none;
-        }
-        .controls {
-            background: white;
-            border-radius: 28px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .search-box {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #ddd;
-            border-radius: 40px;
-            font-size: 1rem;
-        }
-        .refresh-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 40px;
-            cursor: pointer;
-        }
-        .video-count {
-            background: #f0f0f0;
-            padding: 8px 16px;
-            border-radius: 40px;
-        }
-        .videos-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        .video-card {
-            background: white;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
-        video {
-            width: 100%;
-            height: auto;
-            display: block;
-            background: black;
-        }
-        .video-info {
-            padding: 14px;
-        }
-        .video-title {
-            font-weight: 600;
-            word-break: break-word;
-        }
-        .video-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.75rem;
-            color: #888;
-            margin-top: 8px;
-        }
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 30px;
-            cursor: pointer;
-        }
-        .loader {
-            text-align: center;
-            padding: 60px;
-            background: white;
-            border-radius: 28px;
-        }
-        .loader-spinner {
-            width: 44px;
-            height: 44px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 16px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: 28px;
-        }
-        @media (max-width: 600px) {
-            .videos-grid {
-                grid-template-columns: 1fr;
-            }
-            .controls {
-                flex-direction: column;
-            }
-        }
+        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+        .video-card { background: #f5f5f5; border-radius: 16px; margin-bottom: 20px; overflow: hidden; }
+        video { width: 100%; max-height: 300px; background: black; }
+        .info { padding: 10px; }
+        .delete { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; float: right; }
+        a { display: inline-block; margin-bottom: 20px; color: #667eea; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎬 কার্টুন কালেকশন</h1>
-            <a href="index.html" class="back-link">➕ নতুন আপলোড</a>
-        </header>
-        
-        <div class="controls">
-            <input type="text" class="search-box" id="searchBox" placeholder="🔍 সার্চ করুন...">
-            <button class="refresh-btn" id="refreshBtn">🔄 রিফ্রেশ</button>
-            <span class="video-count" id="videoCount">০টি ভিডিও</span>
-        </div>
-        
-        <div class="videos-grid" id="videosGrid">
-            <div class="loader"><div class="loader-spinner"></div><p>ভিডিও লোড হচ্ছে...</p></div>
-        </div>
-    </div>
+    <h2>🎥 সব ভিডিও</h2>
+    <a href="index.html">➕ নতুন আপলোড</a>
+    <div id="videoList"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = 'https://zlzpfnhnfhtanuvaskjy.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs';
-        const BUCKET_NAME = 'naruto';
+        const BUCKET = 'naruto';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
-        let allVideos = [];
-        
+
         async function loadVideos() {
-            const grid = document.getElementById('videosGrid');
-            grid.innerHTML = '<div class="loader"><div class="loader-spinner"></div><p>ভিডিও লোড হচ্ছে...</p></div>';
-            
-            try {
-                const { data: files, error } = await supabase.storage.from(BUCKET_NAME).list('videos/');
-                if (error) throw error;
-                
-                const videos = [];
-                if (files && files.length) {
-                    for (const file of files) {
-                        if (file.name) {
-                            const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(`videos/${file.name}`);
-                            videos.push({
-                                id: file.id || file.name,
-                                title: decodeURIComponent(file.name.replace(/^\d+_/, '').replace(/\.[^/.]+$/, '')),
-                                url: urlData.publicUrl,
-                                file_path: `videos/${file.name}`,
-                                created_at: file.created_at || new Date(),
-                            });
-                        }
-                    }
-                }
-                allVideos = videos.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-                displayVideos(allVideos);
-            } catch (err) {
-                grid.innerHTML = `<div class="empty-state"><div style="font-size:48px;">⚠️</div><h3>লোড করতে সমস্যা</h3><p>${err.message}</p></div>`;
-            }
-        }
-        
-        function displayVideos(videos) {
-            const grid = document.getElementById('videosGrid');
-            document.getElementById('videoCount').innerText = `${videos.length}টি ভিডিও`;
-            
-            if (videos.length === 0) {
-                grid.innerHTML = `<div class="empty-state"><div style="font-size:48px;">🎬</div><h3>কোনো ভিডিও নেই</h3><p>প্রথমে একটি আপলোড করুন</p><a href="index.html" style="background:#667eea; color:white; padding:10px 20px; border-radius:40px; text-decoration:none; display:inline-block; margin-top:15px;">আপলোড পেজে যান</a></div>`;
+            const { data, error } = await supabase.storage.from(BUCKET).list('videos/');
+            if (error) {
+                document.getElementById('videoList').innerHTML = `<p>লোড করতে সমস্যা: ${error.message}</p>`;
                 return;
             }
-            
-            grid.innerHTML = videos.map(v => `
-                <div class="video-card">
-                    <video controls preload="metadata" playsinline>
-                        <source src="${v.url}" type="video/mp4">
-                    </video>
-                    <div class="video-info">
-                        <div class="video-title">${escapeHtml(v.title)}</div>
-                        <div class="video-meta">
-                            <span>📅 ${new Date(v.created_at).toLocaleDateString('bn-BD')}</span>
-                            <button class="delete-btn" onclick="deleteVideo('${v.file_path}')">🗑️ ডিলিট</button>
+            if (!data || data.length === 0) {
+                document.getElementById('videoList').innerHTML = '<p>কোনো ভিডিও নেই। প্রথমে আপলোড করুন।</p>';
+                return;
+            }
+            let html = '';
+            for (const file of data) {
+                const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(`videos/${file.name}`);
+                const title = decodeURIComponent(file.name.replace(/^\d+_/, '').replace(/\.[^/.]+$/, ''));
+                html += `
+                    <div class="video-card">
+                        <video controls src="${urlData.publicUrl}"></video>
+                        <div class="info">
+                            <strong>${title}</strong>
+                            <button class="delete" data-path="videos/${file.name}">🗑️ ডিলিট</button>
                         </div>
                     </div>
-                </div>
-            `).join('');
-        }
-        
-        function escapeHtml(str) {
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
+                `;
+            }
+            document.getElementById('videoList').innerHTML = html;
+
+            // ডিলিট বাটনে ইভেন্ট
+            document.querySelectorAll('.delete').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const path = btn.getAttribute('data-path');
+                    if (confirm('ভিডিও মুছতে চান?')) {
+                        await supabase.storage.from(BUCKET).remove([path]);
+                        loadVideos(); // রিলোড
+                    }
+                });
             });
         }
-        
-        window.deleteVideo = async function(filePath) {
-            if (!confirm('ভিডিও মুছে ফেলবেন?')) return;
-            try {
-                await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-                loadVideos();
-                showToast('ভিডিও ডিলিট করা হয়েছে');
-            } catch(e) {
-                alert('ডিলিট করতে সমস্যা: ' + e.message);
-            }
-        };
-        
-        function showToast(msg) {
-            let t = document.createElement('div');
-            t.innerText = msg;
-            t.style.position = 'fixed';
-            t.style.bottom = '20px';
-            t.style.left = '50%';
-            t.style.transform = 'translateX(-50%)';
-            t.style.background = '#333';
-            t.style.color = 'white';
-            t.style.padding = '10px 20px';
-            t.style.borderRadius = '40px';
-            t.style.zIndex = '999';
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 2500);
-        }
-        
-        function searchVideos() {
-            let term = document.getElementById('searchBox').value.toLowerCase();
-            let filtered = allVideos.filter(v => v.title.toLowerCase().includes(term));
-            displayVideos(filtered);
-        }
-        
-        document.getElementById('searchBox').addEventListener('input', searchVideos);
-        document.getElementById('refreshBtn').addEventListener('click', loadVideos);
         loadVideos();
     </script>
 </body>
