@@ -63,10 +63,7 @@
             transform: scale(0.97);
         }
         #fileInput {
-            position: fixed;
-            top: -100px;
-            left: -100px;
-            opacity: 0;
+            display: none;
         }
         .video-info {
             background: #f8f9ff;
@@ -132,7 +129,6 @@
         }
         button:disabled {
             opacity: 0.5;
-            transform: none !important;
         }
     </style>
 </head>
@@ -144,7 +140,7 @@
         <button class="btn-primary" id="pickVideoBtn">📹 ভিডিও নির্বাচন করুন</button>
         <button class="btn-secondary" id="browseFileBtn">📂 ব্রাউজ করুন</button>
         
-        <input type="file" id="fileInput" accept="video/mp4,video/webm,video/mov,video/avi">
+        <input type="file" id="fileInput" accept="video/*">
         
         <div class="video-info" id="videoInfo">
             <div class="video-name" id="videoName"></div>
@@ -157,172 +153,131 @@
         
         <div class="message" id="message"></div>
         
-        <button class="btn-primary" id="uploadBtn" disabled style="background: #ccc; opacity: 1;">🚀 আপলোড করুন</button>
+        <button class="btn-primary" id="uploadBtn" disabled style="background: #ccc;">🚀 আপলোড করুন</button>
         
         <div class="nav-link">
-            <a href="cartoon.html" id="galleryLink">🎥 সব ভিডিও দেখুন</a>
+            <a href="cartoon.html">🎥 সব ভিডিও দেখুন</a>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        (function() {
-            // Supabase Config
-            const SUPABASE_URL = 'https://zlzpfnhnfhtanuvaskjy.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs';
-            const BUCKET_NAME = 'naruto';
+        const SUPABASE_URL = 'https://zlzpfnhnfhtanuvaskjy.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs';
+        const BUCKET_NAME = 'naruto';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let selectedFile = null;
+        
+        const fileInput = document.getElementById('fileInput');
+        const pickVideoBtn = document.getElementById('pickVideoBtn');
+        const browseFileBtn = document.getElementById('browseFileBtn');
+        const videoInfo = document.getElementById('videoInfo');
+        const videoName = document.getElementById('videoName');
+        const videoSize = document.getElementById('videoSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const messageDiv = document.getElementById('message');
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 4000);
+        }
+        
+        function handleFileSelect(file) {
+            if (!file) return;
             
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            let selectedFile = null;
-            
-            // DOM elements
-            const fileInput = document.getElementById('fileInput');
-            const pickVideoBtn = document.getElementById('pickVideoBtn');
-            const browseFileBtn = document.getElementById('browseFileBtn');
-            const videoInfo = document.getElementById('videoInfo');
-            const videoName = document.getElementById('videoName');
-            const videoSize = document.getElementById('videoSize');
-            const uploadBtn = document.getElementById('uploadBtn');
-            const progressBar = document.getElementById('progressBar');
-            const progressFill = document.getElementById('progressFill');
-            const messageDiv = document.getElementById('message');
-            
-            function formatFileSize(bytes) {
-                if (bytes === 0) return '0 Bytes';
-                const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            if (!file.type.startsWith('video/')) {
+                showMessage('শুধু ভিডিও ফাইল সাপোর্ট করে!', 'error');
+                return;
             }
             
-            function showMessage(text, type) {
-                messageDiv.textContent = text;
-                messageDiv.className = `message ${type}`;
-                messageDiv.style.display = 'block';
+            if (file.size > 100 * 1024 * 1024) {
+                showMessage('ভিডিও 100MB এর ছোট হতে হবে!', 'error');
+                return;
+            }
+            
+            selectedFile = file;
+            videoName.textContent = file.name;
+            videoSize.textContent = formatFileSize(file.size);
+            videoInfo.classList.add('show');
+            uploadBtn.disabled = false;
+            uploadBtn.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+        }
+        
+        function openFilePicker() {
+            fileInput.click();
+        }
+        
+        pickVideoBtn.onclick = openFilePicker;
+        browseFileBtn.onclick = openFilePicker;
+        
+        fileInput.onchange = (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleFileSelect(e.target.files[0]);
+            }
+        };
+        
+        async function uploadVideo() {
+            if (!selectedFile) return;
+            
+            uploadBtn.disabled = true;
+            progressBar.classList.add('show');
+            progressFill.style.width = '0%';
+            
+            const timestamp = Date.now();
+            const fileExt = selectedFile.name.split('.').pop();
+            const fileName = `${timestamp}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `videos/${fileName}`;
+            
+            try {
+                progressFill.style.width = '50%';
+                
+                // শুধু স্টোরেজে আপলোড (ডাটাবেস ছাড়া)
+                const { error } = await supabase.storage
+                    .from(BUCKET_NAME)
+                    .upload(filePath, selectedFile, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+                
+                if (error) throw error;
+                
+                progressFill.style.width = '100%';
+                showMessage('✅ ভিডিও আপলোড সফল!', 'success');
+                
                 setTimeout(() => {
-                    messageDiv.style.display = 'none';
-                }, 4000);
-            }
-            
-            function handleFileSelect(file) {
-                console.log("File selected:", file?.name);
-                
-                if (!file) return;
-                
-                if (!file.type.startsWith('video/')) {
-                    showMessage('শুধু ভিডিও ফাইল সাপোর্ট করে!', 'error');
-                    return;
-                }
-                
-                if (file.size > 100 * 1024 * 1024) {
-                    showMessage('ভিডিও 100MB এর ছোট হতে হবে!', 'error');
-                    return;
-                }
-                
-                selectedFile = file;
-                videoName.textContent = file.name;
-                videoSize.textContent = formatFileSize(file.size);
-                videoInfo.classList.add('show');
-                uploadBtn.disabled = false;
-                uploadBtn.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-                uploadBtn.style.color = "white";
-            }
-            
-            // সরাসরি file input খোলার ফাংশন
-            function openFilePicker() {
-                console.log("Opening file picker...");
-                fileInput.click();
-            }
-            
-            // বাটনে ক্লিক ইভেন্ট
-            pickVideoBtn.onclick = function(e) {
-                e.preventDefault();
-                console.log("Pick video button clicked");
-                openFilePicker();
-            };
-            
-            browseFileBtn.onclick = function(e) {
-                e.preventDefault();
-                console.log("Browse button clicked");
-                openFilePicker();
-            };
-            
-            // ফাইল সিলেক্ট হলে
-            fileInput.onchange = function(e) {
-                console.log("File input changed", e.target.files);
-                if (e.target.files && e.target.files.length > 0) {
-                    handleFileSelect(e.target.files[0]);
-                }
-            };
-            
-            async function uploadVideo() {
-                if (!selectedFile) return;
-                
-                uploadBtn.disabled = true;
-                progressBar.classList.add('show');
-                progressFill.style.width = '0%';
-                
-                const timestamp = Date.now();
-                const fileExt = selectedFile.name.split('.').pop();
-                const fileName = `${timestamp}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const filePath = `videos/${fileName}`;
-                
-                try {
-                    progressFill.style.width = '30%';
-                    
-                    const { error } = await supabase.storage
-                        .from(BUCKET_NAME)
-                        .upload(filePath, selectedFile, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
-                    
-                    if (error) throw error;
-                    
-                    progressFill.style.width = '80%';
-                    
-                    // ডাটাবেসে সেভ করার চেষ্টা
-                    try {
-                        const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-                        await supabase.from('videos').insert([{
-                            title: selectedFile.name.replace(/\.[^/.]+$/, ""),
-                            url: urlData.publicUrl,
-                            file_path: filePath,
-                            size: selectedFile.size,
-                            created_at: new Date().toISOString()
-                        }]);
-                    } catch(dbErr) {
-                        console.log("Database not ready:", dbErr);
-                    }
-                    
-                    progressFill.style.width = '100%';
-                    showMessage('✅ ভিডিও আপলোড সফল!', 'success');
-                    
-                    setTimeout(() => {
-                        selectedFile = null;
-                        videoInfo.classList.remove('show');
-                        progressBar.classList.remove('show');
-                        fileInput.value = '';
-                        uploadBtn.disabled = true;
-                        uploadBtn.style.background = "#ccc";
-                    }, 2000);
-                    
-                } catch (error) {
-                    console.error("Upload error:", error);
-                    showMessage('❌ আপলোড ব্যর্থ: ' + error.message, 'error');
+                    selectedFile = null;
+                    videoInfo.classList.remove('show');
                     progressBar.classList.remove('show');
-                    uploadBtn.disabled = false;
-                }
+                    fileInput.value = '';
+                    uploadBtn.disabled = true;
+                    uploadBtn.style.background = "#ccc";
+                }, 2000);
+                
+            } catch (error) {
+                console.error("Upload error:", error);
+                showMessage('❌ আপলোড ব্যর্থ: ' + error.message, 'error');
+                progressBar.classList.remove('show');
+                uploadBtn.disabled = false;
             }
-            
-            uploadBtn.onclick = uploadVideo;
-            
-            // পেজ লোড হওয়ার পর কনসোলে মেসেজ দেখাবে (ডিবাগিং এর জন্য)
-            console.log("Page loaded. Buttons should work now.");
-            console.log("Pick button exists:", !!pickVideoBtn);
-            console.log("File input exists:", !!fileInput);
-        })();
+        }
+        
+        uploadBtn.onclick = uploadVideo;
     </script>
 </body>
 </html>
