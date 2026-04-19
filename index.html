@@ -12,24 +12,25 @@
             padding: 20px;
             text-align: center;
         }
-        .file-input {
+        input {
             display: block;
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             margin: 20px 0;
             border: 2px solid #667eea;
             border-radius: 8px;
-            background: #f9f9ff;
+            font-size: 16px;
         }
         button {
             background: #667eea;
             color: white;
-            padding: 14px 20px;
+            padding: 15px 20px;
             font-size: 18px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             width: 100%;
+            font-weight: bold;
         }
         button:disabled {
             background: #ccc;
@@ -37,30 +38,42 @@
         }
         #info {
             margin: 15px 0;
-            padding: 10px;
+            padding: 12px;
             background: #eef;
             border-radius: 8px;
             display: none;
+            word-break: break-word;
         }
         #status {
             margin-top: 15px;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
         }
         .success { background: #d4edda; color: #155724; }
         .error { background: #f8d7da; color: #721c24; }
+        .loading { background: #fff3cd; color: #856404; }
         a {
             display: inline-block;
             margin-top: 20px;
             color: #667eea;
+            text-decoration: none;
+        }
+        .debug {
+            font-size: 12px;
+            color: #999;
+            margin-top: 20px;
+            text-align: left;
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <h2>🎬 ভিডিও আপলোড করুন</h2>
     
-    <!-- সরাসরি ফাইল ইনপুট - এখানে ক্লিক করলেই গ্যালারি খুলবে -->
-    <input type="file" id="videoFile" accept="video/*" class="file-input">
+    <input type="file" id="videoFile" accept="video/*">
     
     <div id="info"></div>
     
@@ -70,6 +83,11 @@
     
     <br>
     <a href="cartoon.html">🎥 সব ভিডিও দেখুন</a>
+    
+    <div class="debug" id="debug">
+        <strong>ডিবাগ তথ্য:</strong><br>
+        <span id="debugMsg">পেজ লোড হয়েছে</span>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -80,56 +98,115 @@
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
+        // DOM এলিমেন্ট
         const fileInput = document.getElementById('videoFile');
         const infoDiv = document.getElementById('info');
         const uploadBtn = document.getElementById('uploadBtn');
         const statusDiv = document.getElementById('status');
+        const debugSpan = document.getElementById('debugMsg');
         
         let selectedFile = null;
         
-        // যখন ফাইল সিলেক্ট হবে
+        function debugLog(msg) {
+            console.log(msg);
+            debugSpan.innerHTML = msg + ' | ' + new Date().toLocaleTimeString();
+        }
+        
+        debugLog('পেজ লোড হয়েছে, স্ক্রিপ্ট চলছে');
+        
+        // ফাইল সিলেক্ট ইভেন্ট - একাধিক পদ্ধতিতে চেক
         fileInput.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                selectedFile = e.target.files[0];
+            debugLog('change ইভেন্ট ট্রিগার হয়েছে');
+            debugLog('e.target.files.length: ' + e.target.files.length);
+            
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                debugLog('ফাইল পাওয়া গেছে: ' + file.name + ', সাইজ: ' + file.size);
+                
+                selectedFile = file;
                 const sizeMB = (selectedFile.size / 1048576).toFixed(2);
-                infoDiv.innerHTML = `✅ ${selectedFile.name}<br>📦 ${sizeMB} MB`;
+                infoDiv.innerHTML = '✅ ' + selectedFile.name + '<br>📦 ' + sizeMB + ' MB';
                 infoDiv.style.display = 'block';
                 uploadBtn.disabled = false;
+                uploadBtn.style.background = '#667eea';
                 statusDiv.innerHTML = '';
+                debugLog('আপলোড বাটন সক্রিয় করা হয়েছে');
             } else {
+                debugLog('কোনো ফাইল সিলেক্ট হয়নি');
                 selectedFile = null;
                 infoDiv.style.display = 'none';
                 uploadBtn.disabled = true;
             }
         });
         
+        // ম্যানুয়ালি চেক করার জন্য (যদি change ইভেন্ট না কাজ করে)
+        function manualCheck() {
+            if (fileInput.files && fileInput.files.length > 0 && !selectedFile) {
+                debugLog('ম্যানুয়াল চেক: ফাইল আছে কিন্তু selectedFile null');
+                const file = fileInput.files[0];
+                selectedFile = file;
+                const sizeMB = (selectedFile.size / 1048576).toFixed(2);
+                infoDiv.innerHTML = '✅ ' + selectedFile.name + '<br>📦 ' + sizeMB + ' MB';
+                infoDiv.style.display = 'block';
+                uploadBtn.disabled = false;
+                uploadBtn.style.background = '#667eea';
+            }
+        }
+        
+        // প্রতি 1 সেকেন্ডে ম্যানুয়ালি চেক
+        setInterval(manualCheck, 1000);
+        
         // আপলোড বাটনে ক্লিক
         uploadBtn.addEventListener('click', async function() {
-            if (!selectedFile) return;
+            debugLog('আপলোড বাটনে ক্লিক হয়েছে');
+            
+            if (!selectedFile && fileInput.files.length > 0) {
+                selectedFile = fileInput.files[0];
+                debugLog('বাটন ক্লিকের সময় ফাইল রিকভারি: ' + selectedFile.name);
+            }
+            
+            if (!selectedFile) {
+                debugLog('ত্রুটি: কোনো ফাইল সিলেক্ট করা হয়নি');
+                statusDiv.innerHTML = '❌ দয়া করে আগে একটি ভিডিও সিলেক্ট করুন';
+                statusDiv.className = 'error';
+                return;
+            }
             
             uploadBtn.disabled = true;
+            uploadBtn.style.background = '#ccc';
             statusDiv.innerHTML = '⏳ আপলোড হচ্ছে... দয়া করে অপেক্ষা করুন।';
-            statusDiv.className = '';
+            statusDiv.className = 'loading';
+            debugLog('আপলোড শুরু: ' + selectedFile.name);
             
             const ext = selectedFile.name.split('.').pop();
             const fileName = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + '.' + ext;
             const filePath = 'videos/' + fileName;
             
+            debugLog('ফাইল পাথ: ' + filePath);
+            
             try {
-                const { error } = await supabase.storage.from(BUCKET).upload(filePath, selectedFile);
+                const { data, error } = await supabase.storage.from(BUCKET).upload(filePath, selectedFile);
                 if (error) throw error;
                 
+                debugLog('আপলোড সফল');
                 statusDiv.innerHTML = '✅ আপলোড সফল! ভিডিও গ্যালারিতে যাচ্ছি...';
                 statusDiv.className = 'success';
                 setTimeout(() => {
                     window.location.href = 'cartoon.html';
                 }, 1500);
             } catch (err) {
+                debugLog('আপলোড ব্যর্থ: ' + err.message);
                 statusDiv.innerHTML = '❌ ব্যর্থ: ' + err.message;
                 statusDiv.className = 'error';
                 uploadBtn.disabled = false;
+                uploadBtn.style.background = '#667eea';
             }
         });
+        
+        // ডিবাগ উইন্ডো দেখানোর জন্য (শুধু টেস্টিং)
+        setTimeout(() => {
+            document.getElementById('debug').style.display = 'block';
+        }, 1000);
     </script>
 </body>
 </html>
