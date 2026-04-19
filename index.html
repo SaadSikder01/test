@@ -6,110 +6,128 @@
     <title>ভিডিও আপলোড</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: Arial, sans-serif;
             max-width: 500px;
-            margin: auto;
+            margin: 50px auto;
             padding: 20px;
             text-align: center;
         }
-        input, button {
+        .file-input {
+            display: block;
             width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            font-size: 16px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
+            padding: 12px;
+            margin: 20px 0;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: #f9f9ff;
         }
         button {
             background: #667eea;
             color: white;
+            padding: 14px 20px;
+            font-size: 18px;
             border: none;
+            border-radius: 8px;
             cursor: pointer;
+            width: 100%;
         }
         button:disabled {
             background: #ccc;
+            cursor: not-allowed;
         }
-        .success {
-            background: #d4edda;
-            color: #155724;
+        #info {
+            margin: 15px 0;
+            padding: 10px;
+            background: #eef;
+            border-radius: 8px;
+            display: none;
+        }
+        #status {
+            margin-top: 15px;
             padding: 10px;
             border-radius: 8px;
         }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            border-radius: 8px;
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
         }
     </style>
 </head>
 <body>
-    <h2>🎬 ভিডিও আপলোড</h2>
+    <h2>🎬 ভিডিও আপলোড করুন</h2>
     
-    <!-- সরাসরি ইনপুট ফিল্ড (কোনো লেবেল বা জাভাস্ক্রিপ্ট ট্রিগার ছাড়া) -->
-    <input type="file" id="videoInput" accept="video/*" capture>
+    <!-- সরাসরি ফাইল ইনপুট - এখানে ক্লিক করলেই গ্যালারি খুলবে -->
+    <input type="file" id="videoFile" accept="video/*" class="file-input">
     
-    <div id="fileInfo" style="margin: 10px 0; font-size: 14px;"></div>
+    <div id="info"></div>
     
-    <button id="uploadBtn" disabled>আপলোড করুন</button>
+    <button id="uploadBtn" disabled>📤 আপলোড করুন</button>
     
     <div id="status"></div>
     
     <br>
-    <a href="cartoon.html" style="color: #667eea;">🎥 সব ভিডিও দেখুন</a>
+    <a href="cartoon.html">🎥 সব ভিডিও দেখুন</a>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Supabase কনফিগারেশন
         const SUPABASE_URL = 'https://zlzpfnhnfhtanuvaskjy.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs';
         const BUCKET = 'naruto';
+        
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        const videoInput = document.getElementById('videoInput');
-        const fileInfo = document.getElementById('fileInfo');
+        
+        const fileInput = document.getElementById('videoFile');
+        const infoDiv = document.getElementById('info');
         const uploadBtn = document.getElementById('uploadBtn');
         const statusDiv = document.getElementById('status');
         
         let selectedFile = null;
-
-        // ভিডিও সিলেক্ট হলে
-        videoInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
+        
+        // যখন ফাইল সিলেক্ট হবে
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
                 selectedFile = e.target.files[0];
                 const sizeMB = (selectedFile.size / 1048576).toFixed(2);
-                fileInfo.innerHTML = `✅ ${selectedFile.name}<br>📦 ${sizeMB} MB`;
+                infoDiv.innerHTML = `✅ ${selectedFile.name}<br>📦 ${sizeMB} MB`;
+                infoDiv.style.display = 'block';
                 uploadBtn.disabled = false;
+                statusDiv.innerHTML = '';
             } else {
                 selectedFile = null;
-                fileInfo.innerHTML = '';
+                infoDiv.style.display = 'none';
                 uploadBtn.disabled = true;
             }
         });
-
-        // আপলোড বাটন
-        uploadBtn.addEventListener('click', async () => {
+        
+        // আপলোড বাটনে ক্লিক
+        uploadBtn.addEventListener('click', async function() {
             if (!selectedFile) return;
             
             uploadBtn.disabled = true;
-            statusDiv.innerHTML = '⏳ আপলোড হচ্ছে...';
+            statusDiv.innerHTML = '⏳ আপলোড হচ্ছে... দয়া করে অপেক্ষা করুন।';
             statusDiv.className = '';
             
             const ext = selectedFile.name.split('.').pop();
-            const fileName = Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '.' + ext;
+            const fileName = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + '.' + ext;
             const filePath = 'videos/' + fileName;
             
-            const { error } = await supabase.storage.from(BUCKET).upload(filePath, selectedFile);
-            
-            if (error) {
-                statusDiv.innerHTML = '❌ ব্যর্থ: ' + error.message;
-                statusDiv.className = 'error';
-                uploadBtn.disabled = false;
-            } else {
-                statusDiv.innerHTML = '✅ আপলোড সফল! Redirecting...';
+            try {
+                const { error } = await supabase.storage.from(BUCKET).upload(filePath, selectedFile);
+                if (error) throw error;
+                
+                statusDiv.innerHTML = '✅ আপলোড সফল! ভিডিও গ্যালারিতে যাচ্ছি...';
                 statusDiv.className = 'success';
                 setTimeout(() => {
                     window.location.href = 'cartoon.html';
                 }, 1500);
+            } catch (err) {
+                statusDiv.innerHTML = '❌ ব্যর্থ: ' + err.message;
+                statusDiv.className = 'error';
+                uploadBtn.disabled = false;
             }
         });
     </script>
