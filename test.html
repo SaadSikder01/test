@@ -1,68 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ভিডিও গ্যালারি</title>
+    <title>View Videos - Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
-        .video-card { background: #f5f5f5; border-radius: 16px; margin-bottom: 20px; overflow: hidden; }
-        video { width: 100%; max-height: 300px; background: black; }
-        .info { padding: 10px; }
-        .delete { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; float: right; }
-        a { display: inline-block; margin-bottom: 20px; color: #667eea; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .video-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+        video { width: 100%; border-radius: 5px; }
+        h2 { text-align: center; }
+        .back-link { display: block; text-align: center; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <h2>🎥 সব ভিডিও</h2>
-    <a href="index.html">➕ নতুন আপলোড</a>
-    <div id="videoList"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = 'https://zlzpfnhnfhtanuvaskjy.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs';
-        const BUCKET = 'naruto';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<h2>সব ভিডিও গ্যালারি</h2>
+<a href="index.html" class="back-link">← নতুন ভিডিও আপলোড করুন</a>
 
-        async function loadVideos() {
-            const { data, error } = await supabase.storage.from(BUCKET).list('videos/');
-            if (error) {
-                document.getElementById('videoList').innerHTML = `<p>লোড করতে সমস্যা: ${error.message}</p>`;
-                return;
-            }
-            if (!data || data.length === 0) {
-                document.getElementById('videoList').innerHTML = '<p>কোনো ভিডিও নেই। প্রথমে আপলোড করুন।</p>';
-                return;
-            }
-            let html = '';
-            for (const file of data) {
-                const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(`videos/${file.name}`);
-                const title = decodeURIComponent(file.name.replace(/^\d+_/, '').replace(/\.[^/.]+$/, ''));
-                html += `
-                    <div class="video-card">
-                        <video controls src="${urlData.publicUrl}"></video>
-                        <div class="info">
-                            <strong>${title}</strong>
-                            <button class="delete" data-path="videos/${file.name}">🗑️ ডিলিট</button>
-                        </div>
-                    </div>
-                `;
-            }
-            document.getElementById('videoList').innerHTML = html;
+<div class="video-grid" id="videoContainer">
+    <p style="text-align: center; width: 100%;">ভিডিও লোড হচ্ছে...</p>
+</div>
 
-            // ডিলিট বাটনে ইভেন্ট
-            document.querySelectorAll('.delete').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const path = btn.getAttribute('data-path');
-                    if (confirm('ভিডিও মুছতে চান?')) {
-                        await supabase.storage.from(BUCKET).remove([path]);
-                        loadVideos(); // রিলোড
-                    }
-                });
-            });
+<script>
+    const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadVideos() {
+        const container = document.getElementById('videoContainer');
+
+        const { data, error } = await supabase
+            .from('video_list')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            container.innerHTML = "Error loading videos: " + error.message;
+            return;
         }
-        loadVideos();
-    </script>
+
+        if (data.length === 0) {
+            container.innerHTML = "কোনো ভিডিও পাওয়া যায়নি।";
+            return;
+        }
+
+        container.innerHTML = ""; // লোডিং টেক্সট মুছে ফেলা
+        data.forEach(video => {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.innerHTML = `
+                <video controls>
+                    <source src="${video.url}" type="video/mp4">
+                    আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
+                </video>
+                <p><strong>${video.name}</strong></p>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    loadVideos();
+</script>
+
 </body>
 </html>
