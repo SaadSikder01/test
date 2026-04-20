@@ -5,69 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Upload - Supabase</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f4f4f4; }
-        .container { background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        input { margin: 10px 0; }
-        button { background: #3ecf8e; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
-        #status { margin-top: 15px; color: blue; }
-    </style>
 </head>
 <body>
 
-<div class="container">
+<div style="text-align: center; padding: 50px;">
     <h2>ভিডিও আপলোড করুন</h2>
-    <input type="file" id="videoInput" accept="video/*"><br>
-    <button onclick="uploadVideo()">আপলোড শুরু করুন</button>
+    <input type="file" id="videoInput" accept="video/*"><br><br>
+    <button id="uploadBtn">আপলোড শুরু করুন</button>
     <p id="status"></p>
     <br>
-    <a href="videos.html">আপলোড করা ভিডিওগুলো দেখুন →</a>
+    <a href="videos.html">গ্যালারি দেখুন</a>
 </div>
 
 <script>
     const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // ক্লায়েন্ট তৈরি করার সঠিক নিয়ম
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function uploadVideo() {
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
         const fileInput = document.getElementById('videoInput');
         const status = document.getElementById('status');
         
         if (fileInput.files.length === 0) {
-            alert("অনুগ্রহ করে একটি ভিডিও ফাইল সিলেক্ট করুন!");
+            alert("আগে একটি ফাইল সিলেক্ট করুন!");
             return;
         }
 
         const file = fileInput.files[0];
         const fileName = `${Date.now()}_${file.name}`;
-        status.innerText = "আপলোড হচ্ছে... দয়া করে অপেক্ষা করুন।";
+        status.innerText = "আপলোড শুরু হয়েছে...";
+        console.log("Uploading:", fileName);
 
-        // 1. Storage এ ফাইল আপলোড করা
-        const { data: storageData, error: storageError } = await supabase.storage
-            .from('naruto')
-            .upload(fileName, file);
+        try {
+            // ১. স্টোরেজে আপলোড
+            const { data: storageData, error: storageError } = await _supabase.storage
+                .from('naruto')
+                .upload(fileName, file);
 
-        if (storageError) {
-            status.innerText = "Error: " + storageError.message;
-            return;
+            if (storageError) throw storageError;
+
+            // ২. লিঙ্ক তৈরি
+            const { data: urlData } = _supabase.storage.from('naruto').getPublicUrl(fileName);
+            const videoUrl = urlData.publicUrl;
+
+            // ৩. ডেটাবেসে সেভ
+            const { error: dbError } = await _supabase
+                .from('video_list')
+                .insert([{ name: file.name, url: videoUrl }]);
+
+            if (dbError) throw dbError;
+
+            alert("সফলভাবে আপলোড হয়েছে!");
+            status.innerText = "আপলোড সম্পন্ন!";
+            
+        } catch (error) {
+            console.error(error);
+            alert("সমস্যা হয়েছে: " + error.message);
+            status.innerText = "ব্যর্থ হয়েছে।";
         }
-
-        // 2. ফাইলের পাবলিক URL নেওয়া
-        const { data: urlData } = supabase.storage.from('naruto').getPublicUrl(fileName);
-        const videoUrl = urlData.publicUrl;
-
-        // 3. Database টেবিলে লিঙ্ক সেভ করা
-        const { error: dbError } = await supabase
-            .from('video_list')
-            .insert([{ name: file.name, url: videoUrl }]);
-
-        if (dbError) {
-            status.innerText = "Database Error: " + dbError.message;
-        } else {
-            status.innerText = "সফলভাবে আপলোড হয়েছে!";
-            fileInput.value = "";
-        }
-    }
+    });
 </script>
 
 </body>
