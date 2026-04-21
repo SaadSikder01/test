@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ভিডিও প্লে | কার্টুন হাব</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f0f;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: #0f0f0f;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            border-bottom: 1px solid #272727;
+        }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #aaa;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+        }
+
+        /* প্রধান ভিডিও এলাকা */
+        .main-video {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .main-video video {
+            width: 100%;
+            max-height: 70vh;
+            background: black;
+        }
+
+        .video-info {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .video-title {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .video-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+        }
+        .action-btn {
+            background: #272727;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 40px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+        .action-btn:hover {
+            background: #3a3a3a;
+        }
+        .like-btn.liked {
+            background: #cc0000;
+            color: white;
+        }
+
+        /* সাইডবার (সুপারিশকৃত ভিডিও) */
+        .recommendations {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .recommendations h3 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+        .rec-card {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 12px;
+            transition: background 0.3s;
+        }
+        .rec-card:hover {
+            background: #272727;
+        }
+        .rec-thumb {
+            width: 168px;
+            height: 94px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .rec-thumb video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+        .rec-info {
+            flex: 1;
+        }
+        .rec-title {
+            color: white;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .rec-meta {
+            color: #aaa;
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loader {
+            text-align: center;
+            padding: 60px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="navbar">
+    <div class="logo">🎬 কার্টুন হাব</div>
+    <div class="nav-links">
+        <a href="index.html">হোম</a>
+        <a href="videos.html">গ্যালারি</a>
+        <a href="dashboard.html">ড্যাশবোর্ড</a>
+        <a href="user.html">প্রোফাইল</a>
+    </div>
+</div>
+
+<div class="container" id="app">
+    <div class="loader">লোড হচ্ছে...</div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get('id');
+
+    let currentVideo = null;
+    let allVideos = [];
+
+    async function loadPage() {
+        if (!videoId) {
+            window.location.href = 'videos.html';
+            return;
+        }
+
+        // ১. সব ভিডিও লোড করুন (সুপারিশের জন্য)
+        const { data: allData } = await supabase.from('video_list').select('*');
+        allVideos = allData || [];
+
+        // ২. বর্তমান ভিডিও লোড করুন
+        const { data: videoData, error } = await supabase
+            .from('video_list')
+            .select('*')
+            .eq('id', videoId)
+            .single();
+
+        if (error || !videoData) {
+            document.getElementById('app').innerHTML = '<div class="loader">ভিডিও পাওয়া যায়নি</div>';
+            return;
+        }
+
+        currentVideo = videoData;
+
+        // ৩. লাইক স্ট্যাটাস চেক করুন (user.html থেকে ইউজার আইডি পাবেন, এখন আপাতত localStorage)
+        const liked = localStorage.getItem(`liked_${videoId}`) === 'true';
+
+        renderPage(liked);
+    }
+
+    function renderPage(isLiked) {
+        const recVideos = allVideos.filter(v => v.id !== currentVideo.id).slice(0, 10);
+
+        const html = `
+            <div class="main-video">
+                <video controls autoplay src="${currentVideo.url}"></video>
+            </div>
+            <div class="video-info">
+                <div class="video-title">${escapeHtml(currentVideo.title)}</div>
+                <div class="video-stats">
+                    <span style="color:#aaa;">📅 ${formatDate(currentVideo.created_at)}</span>
+                    <div class="action-buttons">
+                        <button class="action-btn like-btn ${isLiked ? 'liked' : ''}" id="likeBtn">
+                            ❤️ ${currentVideo.like_count || 0} লাইক
+                        </button>
+                        <button class="action-btn" id="downloadBtn">
+                            ⬇️ ডাউনলোড
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="recommendations">
+                <h3>🎬 সুপারিশকৃত ভিডিও</h3>
+                ${recVideos.map(v => `
+                    <div class="rec-card" onclick="goToVideo(${v.id})">
+                        <div class="rec-thumb">
+                            <video src="${v.url}" preload="metadata"></video>
+                        </div>
+                        <div class="rec-info">
+                            <div class="rec-title">${escapeHtml(v.title)}</div>
+                            <div class="rec-meta">❤️ ${v.like_count || 0} লাইক</div>
+                        </div>
+                    </div>
+                `).join('')}
+                ${recVideos.length === 0 ? '<p style="color:#aaa;">সুপারিশ করার মতো আর কোনো ভিডিও নেই</p>' : ''}
+            </div>
+        `;
+
+        document.getElementById('app').innerHTML = html;
+
+        // লাইক বাটন ইভেন্ট
+        document.getElementById('likeBtn')?.addEventListener('click', toggleLike);
+        document.getElementById('downloadBtn')?.addEventListener('click', downloadVideo);
+    }
+
+    async function toggleLike() {
+        const likedBefore = localStorage.getItem(`liked_${videoId}`) === 'true';
+        const newLikeCount = currentVideo.like_count + (likedBefore ? -1 : 1);
+
+        // Optimistic UI update
+        currentVideo.like_count = newLikeCount;
+        const btn = document.getElementById('likeBtn');
+        if (btn) {
+            btn.innerHTML = `❤️ ${newLikeCount} লাইক`;
+            if (!likedBefore) btn.classList.add('liked');
+            else btn.classList.remove('liked');
+        }
+
+        // ডাটাবেস আপডেট
+        await supabase.from('video_list').update({ like_count: newLikeCount }).eq('id', videoId);
+
+        if (!likedBefore) {
+            localStorage.setItem(`liked_${videoId}`, 'true');
+        } else {
+            localStorage.removeItem(`liked_${videoId}`);
+        }
+    }
+
+    function downloadVideo() {
+        const link = document.createElement('a');
+        link.href = currentVideo.url;
+        link.download = currentVideo.title + '.mp4';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function goToVideo(id) {
+        window.location.href = `watch.html?id=${id}`;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'অজানা';
+        const date = new Date(dateStr);
+        return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
+    }
+
+    loadPage();
+</script>
+</body>
+</html>
