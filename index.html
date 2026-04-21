@@ -3,77 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Video - Naruto Storage</title>
+    <title>Main Panel - Video Site</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .upload-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 350px; }
-        h2 { color: #333; margin-bottom: 20px; }
-        input[type="file"] { margin: 15px 0; width: 100%; }
-        button { background-color: #3ecf8e; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: 0.3s; width: 100%; }
-        button:hover { background-color: #34b27b; }
-        #status { margin-top: 15px; font-size: 14px; color: #666; }
-        .link { display: block; margin-top: 20px; color: #007bff; text-decoration: none; font-size: 14px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f9f9f9; display: flex; }
+        .sidebar { width: 250px; background: #fff; height: 100vh; border-right: 1px solid #ddd; padding: 20px; position: fixed; }
+        .sidebar h2 { color: #ff0000; }
+        .sidebar a { display: block; padding: 12px; color: #333; text-decoration: none; border-radius: 8px; margin-bottom: 5px; }
+        .sidebar a:hover { background: #eee; }
+        .main-content { margin-left: 270px; padding: 40px; width: 100%; }
+        .upload-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 500px; }
+        input, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background: #ff0000; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #cc0000; }
     </style>
 </head>
 <body>
 
-<div class="upload-card">
-    <h2>ভিডিও আপলোড</h2>
-    <input type="file" id="videoInput" accept="video/*">
-    <button id="uploadBtn">আপলোড শুরু করুন</button>
-    <p id="status"></p>
-    <a href="videos.html" class="link">ভিডিও গ্যালারি দেখুন →</a>
+<div class="sidebar">
+    <h2>VideoApp</h2>
+    <a href="index.html">🏠 হোম (আপলোড)</a>
+    <a href="dashboard.html">📊 ড্যাশবোর্ড (ম্যানেজ)</a>
+    <a href="user.html">👤 Add User</a>
+    <a href="view.html" style="background: #ff0000; color: white;">🌐 ভিডিও দেখুন</a>
+</div>
+
+<div class="main-content">
+    <div class="upload-box">
+        <h3>নতুন ভিডিও আপলোড করুন</h3>
+        <input type="text" id="videoTitle" placeholder="ভিডিও টাইটেল দিন...">
+        <input type="file" id="videoFile" accept="video/*">
+        <button onclick="uploadVideo()">আপলোড করুন</button>
+        <p id="status"></p>
+    </div>
 </div>
 
 <script>
     const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
-    
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    document.getElementById('uploadBtn').addEventListener('click', async () => {
-        const fileInput = document.getElementById('videoInput');
+    async function uploadVideo() {
+        const title = document.getElementById('videoTitle').value;
+        const file = document.getElementById('videoFile').files[0];
         const status = document.getElementById('status');
-        
-        if (fileInput.files.length === 0) {
-            alert("অনুগ্রহ করে একটি ভিডিও ফাইল সিলেক্ট করুন!");
-            return;
-        }
 
-        const file = fileInput.files[0];
+        if(!title || !file) return alert("টাইটেল এবং ফাইল দিন!");
+
+        status.innerText = "আপলোড হচ্ছে...";
         const fileName = `${Date.now()}_${file.name}`;
-        status.innerText = "আপলোড হচ্ছে... দয়া করে অপেক্ষা করুন।";
 
-        try {
-            // ১. স্টোরেজে আপলোড
-            const { data: storageData, error: storageError } = await _supabase.storage
-                .from('naruto')
-                .upload(fileName, file);
+        const { data: stData, error: stErr } = await _supabase.storage.from('naruto').upload(fileName, file);
+        if(stErr) return alert(stErr.message);
 
-            if (storageError) throw storageError;
+        const { data: urlData } = _supabase.storage.from('naruto').getPublicUrl(fileName);
+        
+        const { error: dbErr } = await _supabase.from('video_list').insert([{ title, name: file.name, url: urlData.publicUrl }]);
+        if(dbErr) return alert(dbErr.message);
 
-            // ২. পাবলিক ইউআরএল নেওয়া
-            const { data: urlData } = _supabase.storage.from('naruto').getPublicUrl(fileName);
-            const videoUrl = urlData.publicUrl;
-
-            // ৩. ডেটাবেসে তথ্য সেভ
-            const { error: dbError } = await _supabase
-                .from('video_list')
-                .insert([{ name: file.name, url: videoUrl }]);
-
-            if (dbError) throw dbError;
-
-            status.innerText = "সফলভাবে আপলোড হয়েছে!";
-            alert("আপলোড সম্পন্ন!");
-            fileInput.value = ""; 
-
-        } catch (error) {
-            console.error(error);
-            status.innerText = "ভুল হয়েছে: " + error.message;
-        }
-    });
+        status.innerText = "সফলভাবে আপলোড হয়েছে!";
+        document.getElementById('videoTitle').value = "";
+    }
 </script>
-
 </body>
 </html>
