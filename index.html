@@ -2,78 +2,300 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Video - Naruto Storage</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ভিডিও আপলোড | কার্টুন হাব</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .upload-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 350px; }
-        h2 { color: #333; margin-bottom: 20px; }
-        input[type="file"] { margin: 15px 0; width: 100%; }
-        button { background-color: #3ecf8e; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: 0.3s; width: 100%; }
-        button:hover { background-color: #34b27b; }
-        #status { margin-top: 15px; font-size: 14px; color: #666; }
-        .link { display: block; margin-top: 20px; color: #007bff; text-decoration: none; font-size: 14px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* নেভিগেশন বার */
+        .navbar {
+            background: white;
+            border-radius: 60px;
+            padding: 12px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            color: #667eea;
+        }
+
+        /* আপলোড কার্ড */
+        .upload-card {
+            background: white;
+            border-radius: 28px;
+            padding: 30px 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: block;
+            background: #f0f2ff;
+            border: 2px dashed #667eea;
+            border-radius: 20px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .file-label:hover {
+            background: #e8ebff;
+        }
+        .file-label span {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .file-label p {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .title-input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid #ddd;
+            border-radius: 50px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .title-input:focus {
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.02);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 50px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+
+        .file-info {
+            background: #f8f9ff;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 15px 0;
+            font-size: 14px;
+            word-break: break-word;
+            display: none;
+        }
+        .file-info.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
+<div class="container">
+    <!-- নেভিগেশন বার -->
+    <div class="navbar">
+        <div class="logo">🎬 কার্টুন হাব</div>
+        <div class="nav-links">
+            <a href="index.html" class="active">হোম</a>
+            <a href="videos.html">গ্যালারি</a>
+            <a href="dashboard.html">ড্যাশবোর্ড</a>
+            <a href="user.html">প্রোফাইল</a>
+        </div>
+    </div>
 
-<div class="upload-card">
-    <h2>ভিডিও আপলোড</h2>
-    <input type="file" id="videoInput" accept="video/*">
-    <button id="uploadBtn">আপলোড শুরু করুন</button>
-    <p id="status"></p>
-    <a href="videos.html" class="link">ভিডিও গ্যালারি দেখুন →</a>
+    <!-- আপলোড কার্ড -->
+    <div class="upload-card">
+        <h2>📤 ভিডিও আপলোড করুন</h2>
+        <p class="subtitle">আপনার প্রিয় কার্টুন শেয়ার করুন</p>
+
+        <label for="videoInput" class="file-label">
+            <span>📹</span>
+            <p>ভিডিও ফাইল নির্বাচন করুন</p>
+            <small style="color:#999;">MP4, MOV, WebM (সর্বোচ্চ 100MB)</small>
+        </label>
+        <input type="file" id="videoInput" accept="video/*">
+
+        <input type="text" id="videoTitle" class="title-input" placeholder="ভিডিওর টাইটেল (যেমন: নারুটো vs সাসকে)">
+
+        <div id="fileInfo" class="file-info"></div>
+
+        <button id="uploadBtn" disabled>⏳ আপলোড করুন</button>
+
+        <div id="status"></div>
+    </div>
 </div>
 
 <script>
+    // Supabase কনফিগারেশন (আপনার দেওয়া তথ্য)
     const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
-    
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    document.getElementById('uploadBtn').addEventListener('click', async () => {
-        const fileInput = document.getElementById('videoInput');
-        const status = document.getElementById('status');
-        
-        if (fileInput.files.length === 0) {
-            alert("অনুগ্রহ করে একটি ভিডিও ফাইল সিলেক্ট করুন!");
+    const fileInput = document.getElementById('videoInput');
+    const titleInput = document.getElementById('videoTitle');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('status');
+    const fileInfo = document.getElementById('fileInfo');
+
+    let selectedFile = null;
+
+    // ফাইল সিলেক্ট হলে
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            selectedFile = e.target.files[0];
+            const sizeMB = (selectedFile.size / 1048576).toFixed(2);
+            fileInfo.innerHTML = `✅ ${selectedFile.name} (${sizeMB} MB)`;
+            fileInfo.classList.add('show');
+
+            // টাইটেল ইনপুট খালি থাকলে ফাইলের নাম বসিয়ে দিন
+            if (!titleInput.value.trim()) {
+                const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
+                titleInput.value = nameWithoutExt;
+            }
+
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = "🚀 আপলোড শুরু করুন";
+            statusDiv.innerHTML = "";
+        } else {
+            selectedFile = null;
+            fileInfo.classList.remove('show');
+            uploadBtn.disabled = true;
+        }
+    });
+
+    // আপলোড বাটনে ক্লিক
+    uploadBtn.addEventListener('click', async () => {
+        if (!selectedFile) {
+            alert("দয়া করে একটি ভিডিও ফাইল সিলেক্ট করুন!");
             return;
         }
 
-        const file = fileInput.files[0];
-        const fileName = `${Date.now()}_${file.name}`;
-        status.innerText = "আপলোড হচ্ছে... দয়া করে অপেক্ষা করুন।";
+        const videoTitle = titleInput.value.trim();
+        if (!videoTitle) {
+            alert("দয়া করে ভিডিওর টাইটেল দিন!");
+            return;
+        }
+
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = "⏳ আপলোড হচ্ছে...";
+        statusDiv.innerHTML = "আপলোড প্রক্রিয়া শুরু হয়েছে, দয়া করে অপেক্ষা করুন।";
+        statusDiv.className = "info";
+
+        // ইউনিক ফাইলনেম তৈরি
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.${fileExt}`;
 
         try {
             // ১. স্টোরেজে আপলোড
-            const { data: storageData, error: storageError } = await _supabase.storage
+            const { error: storageError } = await supabase.storage
                 .from('naruto')
-                .upload(fileName, file);
+                .upload(fileName, selectedFile);
 
             if (storageError) throw storageError;
 
             // ২. পাবলিক ইউআরএল নেওয়া
-            const { data: urlData } = _supabase.storage.from('naruto').getPublicUrl(fileName);
+            const { data: urlData } = supabase.storage.from('naruto').getPublicUrl(fileName);
             const videoUrl = urlData.publicUrl;
 
-            // ৩. ডেটাবেসে তথ্য সেভ
-            const { error: dbError } = await _supabase
+            // ৩. ডাটাবেসে তথ্য সেভ (টাইটেল ও লাইক কাউন্ট সহ)
+            const { error: dbError } = await supabase
                 .from('video_list')
-                .insert([{ name: file.name, url: videoUrl }]);
+                .insert([{
+                    name: selectedFile.name,
+                    title: videoTitle,
+                    url: videoUrl,
+                    like_count: 0
+                }]);
 
             if (dbError) throw dbError;
 
-            status.innerText = "সফলভাবে আপলোড হয়েছে!";
-            alert("আপলোড সম্পন্ন!");
-            fileInput.value = ""; 
+            // সফল হলে
+            statusDiv.innerHTML = "✅ আপলোড সফল! পেজ রিফ্রেশ হচ্ছে...";
+            statusDiv.className = "success";
+            setTimeout(() => {
+                window.location.href = "videos.html";
+            }, 1500);
 
         } catch (error) {
             console.error(error);
-            status.innerText = "ভুল হয়েছে: " + error.message;
+            statusDiv.innerHTML = "❌ আপলোড ব্যর্থ: " + error.message;
+            statusDiv.className = "error";
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = "🚀 পুনরায় চেষ্টা করুন";
         }
     });
 </script>
-
 </body>
 </html>
