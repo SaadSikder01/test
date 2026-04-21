@@ -2,55 +2,91 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <title>Video Gallery - YouTube Style</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Gallery - Mobile Responsive</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #fff; }
-        header { background: #fff; padding: 10px 50px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
-        .search-bar { width: 50%; display: flex; }
-        .search-bar input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 20px 0 0 20px; outline: none; }
-        .search-bar button { padding: 8px 20px; border: 1px solid #ccc; border-left: none; border-radius: 0 20px 20px 0; cursor: pointer; }
+        body { font-family: 'Roboto', sans-serif; margin: 0; background: #fff; color: #0f0f0f; }
         
-        .main-layout { display: flex; padding: 20px; gap: 20px; flex-wrap: wrap; }
-        .video-player-section { flex: 2; min-width: 600px; display: none; }
-        .video-list-section { flex: 1; min-width: 300px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        /* Header & Search Bar */
+        header { 
+            background: #fff; padding: 10px 15px; display: flex; align-items: center; 
+            justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 1000; 
+        }
+        .search-bar { flex: 1; margin: 0 15px; display: flex; max-width: 600px; }
+        .search-bar input { width: 100%; padding: 8px 15px; border: 1px solid #ccc; border-radius: 20px 0 0 20px; outline: none; }
+        .search-bar button { padding: 8px 15px; border: 1px solid #ccc; border-left: none; border-radius: 0 20px 20px 0; cursor: pointer; background: #f8f8f8; }
+
+        /* Main Layout */
+        .main-container { display: flex; flex-direction: column; padding: 0; }
         
-        .player-box video { width: 100%; background: #000; border-radius: 12px; }
-        .card { cursor: pointer; transition: 0.3s; }
-        .card video { width: 100%; border-radius: 10px; pointer-events: none; }
-        .card-info h4 { margin: 10px 0 5px; }
-        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
-        .btn { padding: 8px 15px; border-radius: 20px; border: none; cursor: pointer; font-size: 14px; }
-        .like-btn { background: #f2f2f2; }
-        .down-btn { background: #3ecf8e; color: white; text-decoration: none; display: inline-block; }
+        /* Video Player Section */
+        .player-section { width: 100%; display: none; background: #fff; margin-bottom: 20px; }
+        .player-wrapper { width: 100%; position: relative; background: #000; }
+        video { width: 100%; aspect-ratio: 16 / 9; }
+        
+        .video-details { padding: 15px; border-bottom: 1px solid #eee; }
+        .video-details h3 { margin: 0 0 10px 0; font-size: 18px; }
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        .btn { 
+            padding: 8px 16px; border-radius: 20px; border: none; cursor: pointer; 
+            display: flex; align-items: center; gap: 5px; font-weight: 500; background: #f2f2f2;
+        }
+        .btn:hover { background: #e5e5e5; }
+        .like-btn.active { background: #333; color: #fff; }
+        .download-btn { background: #3ecf8e; color: white; text-decoration: none; font-size: 14px; }
+
+        /* Video Grid */
+        .video-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)); 
+            gap: 15px; padding: 15px; 
+        }
+
+        /* Responsive Breakpoints */
+        @media (min-width: 768px) {
+            .video-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+            .main-container { flex-direction: row; padding: 20px; gap: 20px; max-width: 1300px; margin: 0 auto; }
+            .player-section { flex: 2; border-radius: 12px; overflow: hidden; }
+            .video-grid { flex: 1; padding: 0; }
+        }
+
+        .card { cursor: pointer; margin-bottom: 10px; }
+        .card img, .card video { width: 100%; border-radius: 12px; object-fit: cover; aspect-ratio: 16/9; background: #eee; }
+        .card-info { padding: 10px 5px; }
+        .card-info h4 { margin: 0; font-size: 14px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <header>
-    <h2 style="color:red">MyTube</h2>
+    <div style="color:red; font-weight:bold; font-size:20px; cursor:pointer;" onclick="location.reload()">MyTube</div>
     <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="ভিডিও খুঁজুন...">
+        <input type="text" id="searchInput" placeholder="সার্চ করুন...">
         <button onclick="searchVideos()">🔍</button>
     </div>
 </header>
 
-<div class="main-layout">
-    <div class="video-player-section" id="playerSection">
-        <div class="player-box">
+<div class="main-container">
+    <div class="player-section" id="playerSection">
+        <div class="player-wrapper">
             <video id="mainPlayer" controls autoplay></video>
-            <h3 id="playingTitle">ভিডিওর টাইটেল</h3>
-            <div class="btn-group">
-                <button class="btn like-btn" onclick="likeVideo()">👍 Like</button>
-                <a id="downloadLink" href="#" download class="btn down-btn">⬇️ Download</a>
+        </div>
+        <div class="video-details">
+            <h3 id="playingTitle">ভিডিও টাইটেল</h3>
+            <div class="action-buttons">
+                <button class="btn like-btn" id="likeBtn" onclick="handleLike()">
+                    👍 <span id="likeCount">0</span>
+                </button>
+                <a id="downloadLink" href="#" download class="btn download-btn">⬇️ ডাউনলোড</a>
             </div>
         </div>
-        <hr>
-        <h4>আরো দেখুন</h4>
-        <div id="randomList"></div>
+        <div style="padding: 15px;"><h4>পরবর্তী ভিডিও</h4></div>
     </div>
 
-    <div class="video-list-section" id="videoGrid"></div>
+    <div class="video-grid" id="videoGrid">
+        <p>ভিডিও লোড হচ্ছে...</p>
+    </div>
 </div>
 
 <script>
@@ -59,9 +95,11 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allVideos = [];
+    let currentVideoId = null;
 
     async function loadVideos() {
-        const { data } = await _supabase.from('video_list').select('*').order('created_at', { ascending: false });
+        const { data, error } = await _supabase.from('video_list').select('*').order('created_at', { ascending: false });
+        if (error) return console.error(error);
         allVideos = data;
         displayVideos(data);
     }
@@ -70,32 +108,52 @@
         const grid = document.getElementById('videoGrid');
         grid.innerHTML = "";
         videos.forEach(v => {
-            grid.innerHTML += `
-                <div class="card" onclick="playVideo('${v.url}', '${v.title}')">
-                    <video src="${v.url}"></video>
-                    <div class="card-info">
-                        <h4>${v.title}</h4>
-                        <small>Uploaded: ${new Date(v.created_at).toLocaleDateString()}</small>
-                    </div>
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => playVideo(v);
+            card.innerHTML = `
+                <video src="${v.url}" muted></video>
+                <div class="card-info">
+                    <h4>${v.title}</h4>
+                    <small style="color:#666">${v.likes || 0} লাইক</small>
                 </div>`;
+            grid.appendChild(card);
         });
     }
 
-    function playVideo(url, title) {
+    function playVideo(video) {
+        currentVideoId = video.id;
         document.getElementById('playerSection').style.display = 'block';
-        document.getElementById('mainPlayer').src = url;
-        document.getElementById('playingTitle').innerText = title;
-        document.getElementById('downloadLink').href = url;
-        window.scrollTo(0,0);
+        const player = document.getElementById('mainPlayer');
+        player.src = video.url;
+        player.play();
         
-        // র‌্যান্ডম লিস্ট দেখানো
-        const randomList = document.getElementById('randomList');
-        randomList.innerHTML = "";
-        allVideos.slice(0, 5).forEach(rv => {
-            if(rv.url !== url) {
-                randomList.innerHTML += `<p style="cursor:pointer; color:blue" onclick="playVideo('${rv.url}', '${rv.title}')">${rv.title}</p>`;
-            }
-        });
+        document.getElementById('playingTitle').innerText = video.title;
+        document.getElementById('likeCount').innerText = video.likes || 0;
+        document.getElementById('downloadLink').href = video.url;
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function handleLike() {
+        if (!currentVideoId) return;
+
+        // UI-তে তৎক্ষণাৎ ১ বাড়িয়ে দেখানো (Optimistic UI)
+        const likeSpan = document.getElementById('likeCount');
+        let currentLikes = parseInt(likeSpan.innerText);
+        likeSpan.innerText = currentLikes + 1;
+
+        // ডাটাবেস আপডেট করা
+        const { data, error } = await _supabase
+            .from('video_list')
+            .update({ likes: currentLikes + 1 })
+            .eq('id', currentVideoId)
+            .select();
+
+        if (error) {
+            alert("লাইক সেভ করা যায়নি!");
+            likeSpan.innerText = currentLikes; // এরর হলে আগের অবস্থায় ফেরত নেওয়া
+        }
     }
 
     function searchVideos() {
