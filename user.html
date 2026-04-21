@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>প্রোফাইল | কার্টুন হাব</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .navbar {
+            background: white;
+            border-radius: 60px;
+            padding: 12px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+        }
+        .nav-links a:hover {
+            color: #667eea;
+        }
+        .profile-card {
+            background: white;
+            border-radius: 28px;
+            padding: 30px 25px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .avatar {
+            font-size: 80px;
+            margin-bottom: 15px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .username {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin: 20px 0;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 50px;
+            font-size: 16px;
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+        .liked-section {
+            margin-top: 30px;
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .liked-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .liked-video {
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .liked-video:hover {
+            background: #f0f2ff;
+        }
+        .liked-video video {
+            width: 80px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            pointer-events: none;
+        }
+        .liked-title {
+            flex: 1;
+            font-weight: 500;
+        }
+        .no-liked {
+            color: #888;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="navbar">
+        <div class="logo">🎬 কার্টুন হাব</div>
+        <div class="nav-links">
+            <a href="index.html">হোম</a>
+            <a href="videos.html">গ্যালারি</a>
+            <a href="dashboard.html">ড্যাশবোর্ড</a>
+            <a href="user.html" class="active">প্রোফাইল</a>
+        </div>
+    </div>
+
+    <div class="profile-card">
+        <div class="avatar">👤</div>
+        <h2>হ্যালো, ভিউয়ার!</h2>
+        <p class="username">@cartoon_lover</p>
+
+        <div class="input-group">
+            <label>📛 আপনার নাম</label>
+            <input type="text" id="displayName" placeholder="আপনার নাম দিন">
+        </div>
+        <div class="input-group">
+            <label>📧 ইমেইল</label>
+            <input type="email" id="userEmail" placeholder="ইমেইল ঠিকানা">
+        </div>
+        <button id="saveProfileBtn">প্রোফাইল সেভ করুন</button>
+
+        <div class="liked-section">
+            <h3>❤️ আপনার লাইক করা ভিডিও</h3>
+            <div id="likedVideosList">
+                <div class="no-liked">লোড হচ্ছে...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // লোড হওয়ার সময় প্রোফাইল লোড করুন
+    const savedName = localStorage.getItem('user_name') || '';
+    const savedEmail = localStorage.getItem('user_email') || '';
+    if (savedName) document.getElementById('displayName').value = savedName;
+    if (savedEmail) document.getElementById('userEmail').value = savedEmail;
+
+    document.getElementById('saveProfileBtn').addEventListener('click', () => {
+        const name = document.getElementById('displayName').value;
+        const email = document.getElementById('userEmail').value;
+        if (name) localStorage.setItem('user_name', name);
+        if (email) localStorage.setItem('user_email', email);
+        alert('প্রোফাইল সেভ হয়েছে!');
+    });
+
+    // লাইক করা ভিডিও দেখানো
+    async function loadLikedVideos() {
+        const likedContainer = document.getElementById('likedVideosList');
+
+        // localStorage থেকে লাইক করা ভিডিওগুলোর আইডি সংগ্রহ করুন
+        const likedIds = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('liked_') && localStorage.getItem(key) === 'true') {
+                const videoId = key.replace('liked_', '');
+                likedIds.push(parseInt(videoId));
+            }
+        }
+
+        if (likedIds.length === 0) {
+            likedContainer.innerHTML = '<div class="no-liked">আপনি এখনো কোনো ভিডিও লাইক করেননি</div>';
+            return;
+        }
+
+        // ডাটাবেস থেকে ভিডিও তথ্য নিন
+        const { data, error } = await supabase
+            .from('video_list')
+            .select('id, title, url')
+            .in('id', likedIds);
+
+        if (error || !data || data.length === 0) {
+            likedContainer.innerHTML = '<div class="no-liked">লাইক করা ভিডিও পাওয়া যায়নি</div>';
+            return;
+        }
+
+        likedContainer.innerHTML = data.map(video => `
+            <div class="liked-video" onclick="goToVideo(${video.id})">
+                <video src="${video.url}" preload="metadata"></video>
+                <div class="liked-title">${escapeHtml(video.title)}</div>
+            </div>
+        `).join('');
+    }
+
+    function goToVideo(id) {
+        window.location.href = `watch.html?id=${id}`;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    loadLikedVideos();
+</script>
+</body>
+</html>
