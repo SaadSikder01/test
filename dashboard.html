@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Manage Videos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #f4f4f4; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #333; color: white; }
+        .del-btn { background: red; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>ভিডিও ম্যানেজমেন্ট ড্যাশবোর্ড</h2>
+    <a href="index.html">← ফিরে যান</a>
+    <br><br>
+    <table>
+        <thead>
+            <tr>
+                <th>টাইটেল</th>
+                <th>আপলোড টাইম</th>
+                <th>অ্যাকশন</th>
+            </tr>
+        </thead>
+        <tbody id="videoTableBody"></tbody>
+    </table>
+
+<script>
+    const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadTable() {
+        const { data } = await _supabase.from('video_list').select('*');
+        const body = document.getElementById('videoTableBody');
+        body.innerHTML = "";
+        data.forEach(v => {
+            body.innerHTML += `<tr>
+                <td>${v.title}</td>
+                <td>${new Date(v.created_at).toLocaleDateString()}</td>
+                <td><button class="del-btn" onclick="deleteVideo(${v.id})">ডিলিট</button></td>
+            </tr>`;
+        });
+    }
+
+    async function deleteVideo(id) {
+        if(!confirm("আপনি কি নিশ্চিত?")) return;
+        await _supabase.from('video_list').delete().eq('id', id);
+        loadTable();
+    }
+    loadTable();
+</script>
+</body>
+</html>
