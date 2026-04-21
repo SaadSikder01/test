@@ -3,25 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Upload - Supabase</title>
+    <title>Upload Video - Naruto Storage</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .upload-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 350px; }
+        h2 { color: #333; margin-bottom: 20px; }
+        input[type="file"] { margin: 15px 0; width: 100%; }
+        button { background-color: #3ecf8e; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: 0.3s; width: 100%; }
+        button:hover { background-color: #34b27b; }
+        #status { margin-top: 15px; font-size: 14px; color: #666; }
+        .link { display: block; margin-top: 20px; color: #007bff; text-decoration: none; font-size: 14px; }
+    </style>
 </head>
 <body>
 
-<div style="text-align: center; padding: 50px;">
-    <h2>ভিডিও আপলোড করুন</h2>
-    <input type="file" id="videoInput" accept="video/*"><br><br>
+<div class="upload-card">
+    <h2>ভিডিও আপলোড</h2>
+    <input type="file" id="videoInput" accept="video/*">
     <button id="uploadBtn">আপলোড শুরু করুন</button>
     <p id="status"></p>
-    <br>
-    <a href="videos.html">গ্যালারি দেখুন</a>
+    <a href="videos.html" class="link">ভিডিও গ্যালারি দেখুন →</a>
 </div>
 
 <script>
     const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
     
-    // ক্লায়েন্ট তৈরি করার সঠিক নিয়ম
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     document.getElementById('uploadBtn').addEventListener('click', async () => {
@@ -29,14 +37,13 @@
         const status = document.getElementById('status');
         
         if (fileInput.files.length === 0) {
-            alert("আগে একটি ফাইল সিলেক্ট করুন!");
+            alert("অনুগ্রহ করে একটি ভিডিও ফাইল সিলেক্ট করুন!");
             return;
         }
 
         const file = fileInput.files[0];
         const fileName = `${Date.now()}_${file.name}`;
-        status.innerText = "আপলোড শুরু হয়েছে...";
-        console.log("Uploading:", fileName);
+        status.innerText = "আপলোড হচ্ছে... দয়া করে অপেক্ষা করুন।";
 
         try {
             // ১. স্টোরেজে আপলোড
@@ -46,24 +53,24 @@
 
             if (storageError) throw storageError;
 
-            // ২. লিঙ্ক তৈরি
+            // ২. পাবলিক ইউআরএল নেওয়া
             const { data: urlData } = _supabase.storage.from('naruto').getPublicUrl(fileName);
             const videoUrl = urlData.publicUrl;
 
-            // ৩. ডেটাবেসে সেভ
+            // ৩. ডেটাবেসে তথ্য সেভ
             const { error: dbError } = await _supabase
                 .from('video_list')
                 .insert([{ name: file.name, url: videoUrl }]);
 
             if (dbError) throw dbError;
 
-            alert("সফলভাবে আপলোড হয়েছে!");
-            status.innerText = "আপলোড সম্পন্ন!";
-            
+            status.innerText = "সফলভাবে আপলোড হয়েছে!";
+            alert("আপলোড সম্পন্ন!");
+            fileInput.value = ""; 
+
         } catch (error) {
             console.error(error);
-            alert("সমস্যা হয়েছে: " + error.message);
-            status.innerText = "ব্যর্থ হয়েছে।";
+            status.innerText = "ভুল হয়েছে: " + error.message;
         }
     });
 </script>
