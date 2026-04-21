@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ড্যাশবোর্ড | কার্টুন হাব</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .navbar {
+            background: white;
+            border-radius: 60px;
+            padding: 12px 24px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            color: #667eea;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .video-table {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .table-header {
+            display: grid;
+            grid-template-columns: 80px 2fr 1fr 100px;
+            background: #667eea;
+            color: white;
+            padding: 15px 20px;
+            font-weight: bold;
+        }
+        .table-row {
+            display: grid;
+            grid-template-columns: 80px 2fr 1fr 100px;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        .table-row:hover {
+            background: #f9f9ff;
+        }
+        .thumbnail {
+            width: 60px;
+            height: 45px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .thumbnail video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .loader {
+            text-align: center;
+            padding: 60px;
+            background: white;
+            border-radius: 20px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            background: white;
+            border-radius: 20px;
+        }
+        @media (max-width: 700px) {
+            .table-header, .table-row {
+                grid-template-columns: 60px 1fr 60px;
+            }
+            .table-header .date-col, .table-row .date-col {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="navbar">
+        <div class="logo">🎬 কার্টুন হাব</div>
+        <div class="nav-links">
+            <a href="index.html">হোম</a>
+            <a href="videos.html">গ্যালারি</a>
+            <a href="dashboard.html" class="active">ড্যাশবোর্ড</a>
+            <a href="user.html">প্রোফাইল</a>
+        </div>
+    </div>
+
+    <h2>📊 ভিডিও ম্যানেজমেন্ট ড্যাশবোর্ড</h2>
+
+    <div id="videoList" class="video-table">
+        <div class="loader">লোড হচ্ছে...</div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const BUCKET = 'naruto';
+
+    async function loadVideos() {
+        const container = document.getElementById('videoList');
+        container.innerHTML = '<div class="loader">লোড হচ্ছে...</div>';
+
+        const { data, error } = await supabase.from('video_list').select('*').order('created_at', { ascending: false });
+        if (error) {
+            container.innerHTML = `<div class="empty-state">❌ লোড করতে সমস্যা: ${error.message}</div>`;
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `<div class="empty-state">🎬 এখনো কোনো ভিডিও আপলোড হয়নি</div>`;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-header">
+                <div>থাম্বনেল</div>
+                <div>ভিডিও টাইটেল</div>
+                <div class="date-col">আপলোডের তারিখ</div>
+                <div>অ্যাকশন</div>
+            </div>
+            ${data.map(video => `
+                <div class="table-row" data-id="${video.id}" data-path="${video.url.split('/').pop()}">
+                    <div class="thumbnail">
+                        <video src="${video.url}" preload="metadata"></video>
+                    </div>
+                    <div><strong>${escapeHtml(video.title)}</strong><br><small style="color:#888;">${video.name || ''}</small></div>
+                    <div class="date-col">${formatDate(video.created_at)}</div>
+                    <div><button class="delete-btn" onclick="deleteVideo(${video.id}, '${video.url.split('/').pop()}')">🗑️ ডিলিট</button></div>
+                </div>
+            `).join('')}
+        `;
+    }
+
+    window.deleteVideo = async function(videoId, fileName) {
+        if (!confirm('এই ভিডিওটি স্থায়ীভাবে ডিলিট করতে চান?')) return;
+
+        try {
+            // ১. স্টোরেজ থেকে ফাইল ডিলিট
+            const { error: storageError } = await supabase.storage.from(BUCKET).remove([fileName]);
+            if (storageError) console.warn('Storage delete error:', storageError);
+
+            // ২. ডাটাবেস থেকে রেকর্ড ডিলিট
+            const { error: dbError } = await supabase.from('video_list').delete().eq('id', videoId);
+            if (dbError) throw dbError;
+
+            // ৩. পেজ রিফ্রেশ
+            alert('ভিডিও ডিলিট করা হয়েছে!');
+            loadVideos();
+        } catch (err) {
+            alert('ডিলিট করতে সমস্যা: ' + err.message);
+        }
+    };
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'অজানা';
+        const date = new Date(dateStr);
+        return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
+    }
+
+    loadVideos();
+</script>
+</body>
+</html>
