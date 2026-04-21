@@ -26,39 +26,43 @@
 <script>
     const SUPABASE_URL = "https://zlzpfnhnfhtanuvaskjy.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // ভেরিয়েবল নাম পরিবর্তন করে _supabase দেওয়া হলো যাতে কনফ্লিক্ট না হয়
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function loadVideos() {
         const container = document.getElementById('videoContainer');
 
-        const { data, error } = await supabase
-            .from('video_list')
-            .select('*')
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await _supabase
+                .from('video_list')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            container.innerHTML = "Error loading videos: " + error.message;
-            return;
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                container.innerHTML = "কোনো ভিডিও পাওয়া যায়নি। আগে আপলোড করুন।";
+                return;
+            }
+
+            container.innerHTML = ""; // লোডিং টেক্সট মুছে ফেলা
+            data.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <video controls style="width:100%; max-width:400px; margin-bottom:10px;">
+                        <source src="${video.url}" type="video/mp4">
+                        আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
+                    </video>
+                    <p><strong>${video.name}</strong></p>
+                `;
+                container.appendChild(card);
+            });
+        } catch (error) {
+            console.error("Error:", error);
+            container.innerHTML = "সমস্যা হয়েছে: " + error.message;
         }
-
-        if (data.length === 0) {
-            container.innerHTML = "কোনো ভিডিও পাওয়া যায়নি।";
-            return;
-        }
-
-        container.innerHTML = ""; // লোডিং টেক্সট মুছে ফেলা
-        data.forEach(video => {
-            const card = document.createElement('div');
-            card.className = 'video-card';
-            card.innerHTML = `
-                <video controls>
-                    <source src="${video.url}" type="video/mp4">
-                    আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
-                </video>
-                <p><strong>${video.name}</strong></p>
-            `;
-            container.appendChild(card);
-        });
     }
 
     loadVideos();
