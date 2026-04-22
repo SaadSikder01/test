@@ -9,7 +9,7 @@
         :root { --yt-red: #f00; --bg-color: #fff; --text-color: #0f0f0f; }
         body { font-family: 'Roboto', Arial, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-color); }
         
-        /* Header & Search Bar */
+        /* Header */
         header { 
             position: sticky; top: 0; background: white; z-index: 1000; 
             display: flex; flex-direction: column; align-items: center; 
@@ -22,26 +22,23 @@
         .search-area input { flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 20px 0 0 20px; outline: none; font-size: 14px; }
         .search-area button { padding: 8px 15px; border: 1px solid #ccc; border-left: none; border-radius: 0 20px 20px 0; cursor: pointer; background: #f8f8f8; }
 
-        /* Container */
         .page-container { display: flex; flex-direction: column; max-width: 100%; margin: 0 auto; padding: 10px; }
 
-        /* Home Grid */
+        /* Video Gallery Grid */
         .video-grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
             gap: 15px; 
         }
 
-        /* Video Card */
-        .v-card { cursor: pointer; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-        .v-card video { width: 100%; aspect-ratio: 16/9; border-radius: 10px; object-fit: cover; background: #000; pointer-events: none; }
+        .v-card { cursor: pointer; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .v-card video { width: 100%; aspect-ratio: 16/9; border-radius: 12px; object-fit: cover; background: #eee; pointer-events: none; }
         .v-info h4 { margin: 0; font-size: 15px; line-height: 1.4; color: var(--text-color); }
         .v-info small { color: #606060; font-size: 12px; }
 
         /* Player Section */
-        #playerSection { display: none; margin-bottom: 25px; }
-        .video-box { width: 100%; background: #000; border-radius: 12px; overflow: hidden; }
-        /* অটো-প্লে বন্ধ রাখতে ভিডিও ট্যাগ */
+        #playerSection { display: none; margin-bottom: 25px; width: 100%; }
+        .video-box { width: 100%; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
         video#mainPlayer { width: 100%; aspect-ratio: 16/9; display: block; }
         
         .video-details { padding: 12px 0; }
@@ -50,7 +47,7 @@
         .btn { padding: 8px 18px; border-radius: 20px; border: none; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px; background: #f2f2f2; text-decoration: none; color: black; font-size: 14px; }
         .btn-down { background: #3ecf8e; color: white; }
 
-        /* Desktop Watch Mode */
+        /* Desktop Layout (YouTube Style) */
         @media (min-width: 1000px) {
             header { flex-direction: row; padding: 10px 5%; justify-content: space-between; }
             .header-top { width: auto; }
@@ -60,14 +57,14 @@
             .watch-mode .main-content { flex: 2.5; }
             .watch-mode .sidebar-content { flex: 1; }
             .watch-mode .video-grid { grid-template-columns: 1fr; }
-            .watch-mode .v-card { flex-direction: row; align-items: flex-start; }
+            .watch-mode .v-card { flex-direction: row; align-items: flex-start; gap: 12px; }
             .watch-mode .v-card video { width: 160px; height: 90px; }
         }
 
         /* Mobile Adjustments */
         @media (max-width: 600px) {
             .video-grid { grid-template-columns: 1fr; }
-            .v-card video { border-radius: 0; } /* মোবাইলে ফুল উইডথ ভালো দেখায় */
+            .v-card video { border-radius: 0; }
             .page-container { padding: 0; }
             .main-content, .sidebar-content { padding: 10px; }
         }
@@ -78,7 +75,7 @@
 <header>
     <div class="header-top">
         <a href="view.html" class="logo">MyTube</a>
-        <div style="width: 20px;"></div> </div>
+    </div>
     <div class="search-area">
         <input type="text" id="searchInput" placeholder="সার্চ করুন...">
         <button onclick="searchVideos()">🔍</button>
@@ -89,7 +86,7 @@
     <div class="main-content">
         <div id="playerSection">
             <div class="video-box">
-                <video id="mainPlayer" controls playsinline preload="metadata"></video>
+                <video id="mainPlayer" controls playsinline preload="metadata" crossorigin="anonymous"></video>
             </div>
             <div class="video-details">
                 <h2 id="videoTitle">লোডিং...</h2>
@@ -116,6 +113,7 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allVideos = [];
+    let currentVideo = null;
 
     async function init() {
         const { data, error } = await _supabase.from('video_list').select('*').order('created_at', { ascending: false });
@@ -127,13 +125,14 @@
 
     function render(list) {
         const grid = document.getElementById('videoGrid');
-        grid.innerHTML = "";
+        grid.innerHTML = list.length ? "" : "কোনো ভিডিও পাওয়া যায়নি।";
         list.forEach(v => {
             const card = document.createElement('div');
             card.className = 'v-card';
             card.onclick = () => play(v);
+            // থাম্বনেইল ফিক্স: যদি থাম্বনেইল না আসে তবে কালো স্ক্রিন এড়াতে metadata লোড
             card.innerHTML = `
-                <video src="${v.url}#t=0.5" muted playsinline></video>
+                <video src="${v.url}#t=0.5" muted playsinline preload="metadata"></video>
                 <div class="v-info">
                     <h4>${v.title}</h4>
                     <small>${v.likes || 0} লাইক</small>
@@ -143,6 +142,7 @@
     }
 
     function play(video) {
+        currentVideo = video;
         const player = document.getElementById('mainPlayer');
         const layout = document.getElementById('mainLayout');
         
@@ -150,10 +150,16 @@
         document.getElementById('playerSection').style.display = 'block';
         document.getElementById('nextLabel').style.display = 'block';
 
-        // অটো-প্লে বন্ধ: শুধু সোর্স সেট করা হবে এবং লোড হবে
-        player.src = video.url;
+        // ব্রোকেন লিঙ্ক ঠেকাতে রিফ্রেশ লজিক
+        player.pause();
+        player.innerHTML = ""; // আগের সোর্স মুছে ফেলা
+        const source = document.createElement('source');
+        source.src = video.url;
+        source.type = "video/mp4";
+        player.appendChild(source);
+        
         player.load(); 
-        // player.play() কল করা হয়নি যাতে ইউজার নিজে প্লে করে
+        // player.play() বন্ধ রাখা হয়েছে আপনার অনুরোধে
 
         document.getElementById('videoTitle').innerText = video.title;
         document.getElementById('likeCount').innerText = video.likes || 0;
@@ -163,19 +169,42 @@
         dBtn.setAttribute('download', `${video.title}.mp4`);
 
         // লাইক চেক
+        updateLikeUI(video.id);
+
+        if (window.innerWidth < 1000) window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateLikeUI(id) {
         const liked = JSON.parse(localStorage.getItem('my_likes') || '[]');
         const lBtn = document.getElementById('likeBtn');
-        lBtn.disabled = liked.includes(video.id);
+        lBtn.disabled = liked.includes(id);
         lBtn.style.opacity = lBtn.disabled ? "0.5" : "1";
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     async function handleLike() {
-        // লাইক ফাংশন একই আছে...
+        if (!currentVideo) return;
         const liked = JSON.parse(localStorage.getItem('my_likes') || '[]');
-        // (আগের লাইক কোডটি এখানে কার্যকর হবে)
+        if (liked.includes(currentVideo.id)) return;
+
+        const newLikes = (currentVideo.likes || 0) + 1;
+        const { error } = await _supabase.from('video_list').update({ likes: newLikes }).eq('id', currentVideo.id);
+
+        if (!error) {
+            document.getElementById('likeCount').innerText = newLikes;
+            liked.push(currentVideo.id);
+            localStorage.setItem('my_likes', JSON.stringify(liked));
+            currentVideo.likes = newLikes;
+            updateLikeUI(currentVideo.id);
+        }
     }
+
+    // ভিডিওতে এরর হলে ধরার জন্য লজিক
+    document.getElementById('mainPlayer').addEventListener('error', function(e) {
+        console.error("Video error detected.");
+        if(currentVideo) {
+             document.getElementById('videoTitle').innerText = "ভিডিও লোড হতে সমস্যা হচ্ছে। পুনরায় চেষ্টা করুন।";
+        }
+    });
 
     function searchVideos() {
         const q = document.getElementById('searchInput').value.toLowerCase();
