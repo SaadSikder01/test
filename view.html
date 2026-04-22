@@ -3,46 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTube - Professional Video Player</title>
+    <title>MyTube - Professional Player</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Roboto', Arial, sans-serif; margin: 0; background: #fff; color: #0f0f0f; }
+        
+        /* Header */
         header { position: sticky; top: 0; background: white; z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid #eee; }
         .logo { color: #f00; font-size: 22px; font-weight: bold; cursor: pointer; text-decoration: none; }
-        .search-area { flex: 0 1 500px; display: flex; margin: 0 20px; }
+        .search-area { flex: 0 1 600px; display: flex; margin: 0 20px; }
         .search-area input { width: 100%; padding: 8px 15px; border: 1px solid #ccc; border-radius: 20px 0 0 20px; outline: none; }
         .search-area button { padding: 8px 20px; border: 1px solid #ccc; border-left: none; border-radius: 0 20px 20px 0; cursor: pointer; background: #f8f8f8; }
 
-        /* Layout */
-        .page-container { display: flex; flex-direction: column; max-width: 1300px; margin: 0 auto; padding: 10px; }
-        .main-content { flex: 2; }
-        .sidebar-content { flex: 1; padding: 0 15px; }
+        /* Main Layout */
+        .page-container { display: flex; flex-direction: column; max-width: 1400px; margin: 0 auto; padding: 0; }
+        .main-content { flex: 3; padding: 10px; }
+        .sidebar-content { flex: 1.2; padding: 10px; }
 
-        /* Player */
+        /* Player Section */
         #playerSection { display: none; margin-bottom: 20px; }
-        .video-box { width: 100%; background: #000; border-radius: 12px; overflow: hidden; }
-        video { width: 100%; aspect-ratio: 16/9; display: block; }
+        .video-box { width: 100%; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
+        video { width: 100%; display: block; aspect-ratio: 16/9; }
+
+        /* Info & Buttons */
         .video-info { padding: 15px 0; border-bottom: 1px solid #eee; }
         .video-info h2 { font-size: 20px; margin: 0 0 10px 0; }
-        .action-row { display: flex; gap: 10px; }
+        .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
         .btn { padding: 10px 18px; border-radius: 20px; border: none; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px; background: #f2f2f2; }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-down { background: #3ecf8e; color: white; }
 
-        /* Video List Card */
-        .video-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        /* Video List (Right Side on Desktop) */
+        .video-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
         .v-card { display: flex; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
-        .v-card video { width: 160px; height: 90px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #eee; }
-        .v-card h4 { margin: 0; font-size: 14px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .v-card small { color: #606060; }
+        .v-card video { width: 168px; height: 94px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #000; }
+        .v-card .v-info h4 { margin: 0; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .v-card .v-info small { color: #606060; font-size: 12px; }
 
-        /* Desktop Mode */
+        /* YouTube Desktop Layout (1000px এর উপরে) */
         @media (min-width: 1000px) {
-            .page-container { flex-direction: row; padding: 20px; gap: 24px; }
+            .page-container { flex-direction: row; padding: 20px 40px; gap: 24px; }
+            .main-content { padding: 0; }
+            .sidebar-content { padding: 0; }
         }
 
-        /* Mobile Mode */
-        @media (max-width: 999px) {
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
             .search-area { display: none; }
             .v-card video { width: 120px; height: 68px; }
         }
@@ -56,13 +61,17 @@
         <input type="text" id="searchInput" placeholder="সার্চ করুন...">
         <button onclick="searchVideos()">🔍</button>
     </div>
+    <div style="width:40px"></div>
 </header>
 
 <div class="page-container">
     <div class="main-content">
         <div id="playerSection">
             <div class="video-box">
-                <video id="mainPlayer" controls playsinline preload="auto"></video>
+                <video id="mainPlayer" controls playsinline preload="auto">
+                    <source id="videoSource" type="video/mp4">
+                    আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
+                </video>
             </div>
             <div class="video-info">
                 <h2 id="videoTitle">ভিডিও টাইটেল</h2>
@@ -70,11 +79,13 @@
                     <button class="btn" id="likeBtn" onclick="handleLike()">
                         👍 <span id="likeCount">0</span>
                     </button>
-                    <button class="btn btn-down" id="downBtn" onclick="downloadVideo()">⬇️ ডাউনলোড করুন</button>
+                    <button class="btn btn-down" id="downBtn" onclick="downloadVideo()">⬇️ ডাউনলোড</button>
+                    <a id="fallbackLink" style="display:none; color:blue; font-size:12px;">ডাউনলোড না হলে এখানে চাপুন</a>
                 </div>
             </div>
-            <div style="margin-top: 20px;"><h4>পরবর্তী ভিডিও</h4></div>
         </div>
+        
+        <div style="margin-top:20px"><h4 id="nextText" style="display:none">পরবর্তী ভিডিও</h4></div>
     </div>
 
     <div class="sidebar-content">
@@ -92,113 +103,113 @@
     let allVideos = [];
     let currentVideo = null;
 
-    async function loadAll() {
+    async function loadVideos() {
         const { data, error } = await _supabase.from('video_list').select('*').order('created_at', { ascending: false });
         if (error) return;
         allVideos = data;
-        render(data);
+        renderList(data);
     }
 
-    function render(videos) {
+    function renderList(list) {
         const grid = document.getElementById('videoGrid');
-        grid.innerHTML = videos.length ? "" : "কোনো ভিডিও নেই।";
-        videos.forEach(v => {
+        grid.innerHTML = "";
+        list.forEach(v => {
             const card = document.createElement('div');
             card.className = 'v-card';
-            card.onclick = () => play(v);
-            // মোবাইলে প্রিভিউ দেখার জন্য শেষে #t=0.1 ব্যবহার করা হয়েছে
+            card.onclick = () => playVideo(v);
             card.innerHTML = `
-                <video src="${v.url}#t=0.1" muted playsinline></video>
-                <div>
-                    <h4>${v.title}</h4>
+                <video src="${v.url}#t=0.5" muted playsinline></video>
+                <div class="v-info">
+                    <h4>${v.title || 'শিরোনাম নেই'}</h4>
                     <small>${v.likes || 0} লাইক</small>
                 </div>`;
             grid.appendChild(card);
         });
     }
 
-    function play(video) {
+    function playVideo(video) {
         currentVideo = video;
-        document.getElementById('playerSection').style.display = 'block';
+        const playerSection = document.getElementById('playerSection');
         const player = document.getElementById('mainPlayer');
-        
-        // ভিডিও প্লে করার আগে এটি রিসেট করা হচ্ছে মোবাইলের জন্য
-        player.src = video.url;
+        const source = document.getElementById('videoSource');
+
+        playerSection.style.display = 'block';
+        document.getElementById('nextText').style.display = 'block';
+
+        // মোবাইল ফিক্স: সরাসরি src পরিবর্তন না করে source ব্যবহার করে load() কল করা
+        source.src = video.url;
         player.load(); 
-        
-        player.play().catch(e => {
-            console.log("Autoplay blocked. User needs to click play.");
-        });
 
-        document.getElementById('videoTitle').innerText = video.title;
+        // ব্রাউজার যদি অটো-প্লে ব্লক করে তবে এরর দেখাবে না
+        player.play().catch(e => console.log("অটো-প্লে বা লোডিং সমস্যা। দয়া করে প্লে বাটনে চাপ দিন।"));
+
+        document.getElementById('videoTitle').innerText = video.title || 'শিরোনাম নেই';
         document.getElementById('likeCount').innerText = video.likes || 0;
-        
-        // লাইক চেক (Local Storage)
-        const likedIds = JSON.parse(localStorage.getItem('user_likes') || '[]');
-        const btn = document.getElementById('likeBtn');
-        if(likedIds.includes(video.id)) {
-            btn.disabled = true;
-            btn.innerHTML = `👍 ${video.likes || 0} (Liked)`;
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = `👍 <span id="likeCount">${video.likes || 0}</span>`;
-        }
 
-        if(window.innerWidth < 1000) window.scrollTo({top: 0, behavior: 'smooth'});
+        // লাইক চেক
+        const liked = JSON.parse(localStorage.getItem('liked_list') || '[]');
+        const btn = document.getElementById('likeBtn');
+        btn.disabled = liked.includes(video.id);
+        btn.style.opacity = btn.disabled ? "0.5" : "1";
+
+        if (window.innerWidth < 1000) window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     async function handleLike() {
-        if(!currentVideo) return;
-        const likedIds = JSON.parse(localStorage.getItem('user_likes') || '[]');
-        if(likedIds.includes(currentVideo.id)) return;
+        if (!currentVideo) return;
+        const liked = JSON.parse(localStorage.getItem('liked_list') || '[]');
+        if (liked.includes(currentVideo.id)) return;
 
+        const { error } = await _supabase.rpc('increment_likes', { row_id: currentVideo.id }); 
+        // যদি rpc কাজ না করে তবে নিচের সহজ মেথড:
         const newLikes = (currentVideo.likes || 0) + 1;
-        const { error } = await _supabase.from('video_list').update({ likes: newLikes }).eq('id', currentVideo.id);
+        await _supabase.from('video_list').update({ likes: newLikes }).eq('id', currentVideo.id);
 
-        if(!error) {
-            document.getElementById('likeCount').innerText = newLikes;
-            likedIds.push(currentVideo.id);
-            localStorage.setItem('user_likes', JSON.stringify(likedIds));
-            document.getElementById('likeBtn').disabled = true;
-            currentVideo.likes = newLikes;
-        }
+        document.getElementById('likeCount').innerText = newLikes;
+        liked.push(currentVideo.id);
+        localStorage.setItem('liked_list', JSON.stringify(liked));
+        document.getElementById('likeBtn').disabled = true;
+        document.getElementById('likeBtn').style.opacity = "0.5";
     }
 
     async function downloadVideo() {
-        if(!currentVideo) return;
+        if (!currentVideo) return;
         const btn = document.getElementById('downBtn');
-        btn.innerText = "ডাউনলোড হচ্ছে...";
+        const fallback = document.getElementById('fallbackLink');
+        btn.innerText = "প্রসেসিং...";
         btn.disabled = true;
 
         try {
-            const res = await fetch(currentVideo.url);
-            if(!res.ok) throw new Error();
-            const blob = await res.blob();
+            const response = await fetch(currentVideo.url);
+            if (!response.ok) throw new Error("CORS Error");
+            const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${currentVideo.title}.mp4`;
+            a.download = `${currentVideo.title || 'video'}.mp4`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
-            btn.innerText = "⬇️ ডাউনলোড হয়েছে";
+            btn.innerText = "⬇️ ডাউনলোড";
         } catch (e) {
-            alert("ডাউনলোড ব্যর্থ! সুপাবেস ড্যাশবোর্ডে CORS সেটিংস চেক করুন।");
+            // যদি CORS এর কারণে আটকে যায় তবে সরাসরি লিঙ্কে নিয়ে যাবে
+            btn.innerText = "ব্যর্থ হয়েছে!";
+            fallback.href = currentVideo.url;
+            fallback.style.display = "block";
+            fallback.innerText = "সরাসরি ডাউনলোড করতে এখানে ক্লিক করুন (নতুন ট্যাব)";
+            fallback.target = "_blank";
         } finally {
-            setTimeout(() => {
-                btn.innerText = "⬇️ ডাউনলোড করুন";
-                btn.disabled = false;
-            }, 2000);
+            btn.disabled = false;
         }
     }
 
     function searchVideos() {
         const q = document.getElementById('searchInput').value.toLowerCase();
-        render(allVideos.filter(v => v.title.toLowerCase().includes(q)));
+        renderList(allVideos.filter(v => (v.title || '').toLowerCase().includes(q)));
     }
 
-    loadAll();
+    loadVideos();
 </script>
 </body>
 </html>
