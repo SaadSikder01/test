@@ -6,34 +6,98 @@
     <title>Main Panel - Video Site</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f9f9f9; display: flex; }
-        .sidebar { width: 250px; background: #fff; height: 100vh; border-right: 1px solid #ddd; padding: 20px; position: fixed; }
-        .sidebar h2 { color: #ff0000; }
-        .sidebar a { display: block; padding: 12px; color: #333; text-decoration: none; border-radius: 8px; margin-bottom: 5px; }
-        .sidebar a:hover { background: #eee; }
-        .main-content { margin-left: 270px; padding: 40px; width: 100%; }
-        .upload-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 500px; }
-        input, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; }
-        button { background: #ff0000; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background: #cc0000; }
+        :root { --yt-red: #ff0000; --bg-gray: #f9f9f9; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--bg-gray); display: flex; flex-direction: column; }
+
+        /* Sidebar & Navigation */
+        .sidebar { 
+            width: 250px; background: #fff; height: 100vh; 
+            border-right: 1px solid #ddd; padding: 20px; 
+            position: fixed; z-index: 100;
+        }
+        .sidebar h2 { color: var(--yt-red); margin-bottom: 30px; font-size: 24px; }
+        .sidebar a { 
+            display: flex; align-items: center; padding: 12px; 
+            color: #333; text-decoration: none; border-radius: 8px; 
+            margin-bottom: 8px; font-weight: 500; transition: 0.3s;
+        }
+        .sidebar a:hover { background: #f0f0f0; }
+        .active-nav { background: var(--yt-red) !important; color: white !important; }
+
+        /* Main Content */
+        .main-content { margin-left: 270px; padding: 40px; flex: 1; transition: 0.3s; }
+        .upload-box { 
+            background: white; padding: 30px; border-radius: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 550px; margin: 0 auto; 
+        }
+        h3 { margin-top: 0; color: #444; }
+
+        /* Form Elements */
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 14px; }
+        input[type="text"], input[type="file"] { 
+            width: 100%; padding: 12px; border: 1px solid #ddd; 
+            border-radius: 8px; box-sizing: border-box; outline: none; background: #fcfcfc;
+        }
+        button { 
+            background: var(--yt-red); color: white; border: none; 
+            padding: 15px; width: 100%; border-radius: 8px; 
+            cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s;
+        }
+        button:hover { background: #cc0000; box-shadow: 0 4px 10px rgba(255, 0, 0, 0.2); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+
+        #status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: 500; }
+
+        /* RESPONSIVE DESIGN (মোবাইলের জন্য) */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { 
+                width: 100%; height: auto; position: relative; 
+                padding: 10px; border-right: none; border-bottom: 1px solid #ddd;
+                box-sizing: border-box;
+            }
+            .sidebar h2 { margin-bottom: 15px; text-align: center; }
+            .sidebar-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+            .sidebar a { padding: 8px 12px; font-size: 13px; margin-bottom: 0; }
+            
+            .main-content { margin-left: 0; padding: 20px; }
+            .upload-box { padding: 20px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
     <h2>VideoApp</h2>
-    <a href="index.html">🏠 হোম (আপলোড)</a>
-    <a href="dashboard.html">📊 ড্যাশবোর্ড (ম্যানেজ)</a>
-    <a href="user.html">👤 Add User</a>
-    <a href="view.html" style="background: #ff0000; color: white;">🌐 ভিডিও দেখুন</a>
+    <div class="sidebar-links">
+        <a href="index.html" class="active-nav">🏠 হোম (আপলোড)</a>
+        <a href="dashboard.html">📊 ড্যাশবোর্ড</a>
+        <a href="user.html">👤 Add User</a>
+        <a href="view.html">🌐 ভিডিও দেখুন</a>
+    </div>
 </div>
 
 <div class="main-content">
     <div class="upload-box">
-        <h3>নতুন ভিডিও আপলোড করুন</h3>
-        <input type="text" id="videoTitle" placeholder="ভিডিও টাইটেল দিন...">
-        <input type="file" id="videoFile" accept="video/*">
-        <button onclick="uploadVideo()">আপলোড করুন</button>
+        <h3>নতুন ভিডিও পোস্ট করুন</h3>
+        
+        <div class="input-group">
+            <label>ভিডিওর শিরোনাম</label>
+            <input type="text" id="videoTitle" placeholder="যেমন: আমার নতুন ভ্লগ...">
+        </div>
+
+        <div class="input-group">
+            <label>ভিডিও থাম্বনেইল (ছবি)</label>
+            <input type="file" id="thumbFile" accept="image/*">
+        </div>
+
+        <div class="input-group">
+            <label>ভিডিও ফাইল</label>
+            <input type="file" id="videoFile" accept="video/*">
+        </div>
+
+        <button id="uploadBtn" onclick="uploadData()">পাবলিশ করুন</button>
         <p id="status"></p>
     </div>
 </div>
@@ -43,26 +107,61 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsenBmbmhuZmh0YW51dmFza2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTcwOTYsImV4cCI6MjA5MjA3MzA5Nn0.u9E9HROJw3kPBu5jgoLs4ZUXHeT8XMefLRw-pChOyTs";
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function uploadVideo() {
+    async function uploadData() {
         const title = document.getElementById('videoTitle').value;
-        const file = document.getElementById('videoFile').files[0];
+        const vFile = document.getElementById('videoFile').files[0];
+        const tFile = document.getElementById('thumbFile').files[0];
         const status = document.getElementById('status');
+        const btn = document.getElementById('uploadBtn');
 
-        if(!title || !file) return alert("টাইটেল এবং ফাইল দিন!");
+        if(!title || !vFile || !tFile) return alert("সবগুলো ঘর পূরণ করুন (টাইটেল, ছবি এবং ভিডিও)!");
 
-        status.innerText = "আপলোড হচ্ছে...";
-        const fileName = `${Date.now()}_${file.name}`;
+        // বাটন ডিজেবল করা
+        btn.disabled = true;
+        status.style.color = "blue";
+        status.innerText = "ফাইল আপলোড হচ্ছে, দয়া করে অপেক্ষা করুন...";
 
-        const { data: stData, error: stErr } = await _supabase.storage.from('naruto').upload(fileName, file);
-        if(stErr) return alert(stErr.message);
+        try {
+            const timePrefix = Date.now();
+            
+            // ১. থাম্বনেইল আপলোড
+            const thumbName = `thumbs/${timePrefix}_${tFile.name}`;
+            const { data: tData, error: tErr } = await _supabase.storage.from('naruto').upload(thumbName, tFile);
+            if(tErr) throw tErr;
+            const thumbUrl = _supabase.storage.from('naruto').getPublicUrl(thumbName).data.publicUrl;
 
-        const { data: urlData } = _supabase.storage.from('naruto').getPublicUrl(fileName);
-        
-        const { error: dbErr } = await _supabase.from('video_list').insert([{ title, name: file.name, url: urlData.publicUrl }]);
-        if(dbErr) return alert(dbErr.message);
+            // ২. ভিডিও আপলোড
+            const videoName = `videos/${timePrefix}_${vFile.name}`;
+            const { data: vData, error: vErr } = await _supabase.storage.from('naruto').upload(videoName, vFile);
+            if(vErr) throw vErr;
+            const videoUrl = _supabase.storage.from('naruto').getPublicUrl(videoName).data.publicUrl;
 
-        status.innerText = "সফলভাবে আপলোড হয়েছে!";
-        document.getElementById('videoTitle').value = "";
+            // ৩. ডাটাবেসে সেভ করা
+            const { error: dbErr } = await _supabase.from('video_list').insert([
+                { 
+                    title: title, 
+                    url: videoUrl, 
+                    thumbnail: thumbUrl // ডাটাবেসে 'thumbnail' কলাম থাকতে হবে
+                }
+            ]);
+
+            if(dbErr) throw dbErr;
+
+            status.style.color = "green";
+            status.innerText = "সফলভাবে পাবলিশ হয়েছে!";
+            
+            // ইনপুট ক্লিয়ার করা
+            document.getElementById('videoTitle').value = "";
+            document.getElementById('videoFile').value = "";
+            document.getElementById('thumbFile').value = "";
+
+        } catch (error) {
+            alert("Error: " + error.message);
+            status.style.color = "red";
+            status.innerText = "আপলোড ব্যর্থ হয়েছে।";
+        } finally {
+            btn.disabled = false;
+        }
     }
 </script>
 </body>
