@@ -9,7 +9,6 @@
         :root { --yt-red: #f00; --bg-color: #fff; --text-color: #0f0f0f; }
         body { font-family: 'Roboto', Arial, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-color); overflow-x: hidden; }
         
-        /* Header & Search */
         header { 
             position: sticky; top: 0; background: white; z-index: 1000; 
             display: flex; flex-direction: column; align-items: center; 
@@ -22,9 +21,8 @@
         .search-area input { flex: 1; padding: 10px 15px; border: 1px solid #ccc; border-radius: 20px 0 0 20px; outline: none; font-size: 14px; }
         .search-area button { padding: 10px 18px; border: 1px solid #ccc; border-left: none; border-radius: 0 20px 20px 0; cursor: pointer; background: #f8f8f8; }
 
-        .page-container { display: flex; flex-direction: column; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .page-container { display: flex; flex-direction: column; width: 100%; box-sizing: border-box; }
 
-        /* Home Grid */
         .video-grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
@@ -32,14 +30,14 @@
         }
 
         .v-card { cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
-        /* মোবাইলে ক্রাশ ঠেকাতে লিস্টের ভিডিওর সাইজ ও লোডিং কন্ট্রোল */
-        .v-card .thumb-box { width: 100%; aspect-ratio: 16/9; border-radius: 12px; background: #eee; overflow: hidden; position: relative; }
+        .v-card .thumb-box { width: 100%; aspect-ratio: 16/9; border-radius: 12px; background: #ddd; overflow: hidden; position: relative; }
+        /* থাম্বনেইল ইমেজের জন্য স্টাইল */
+        .v-card img { width: 100%; height: 100%; object-fit: cover; }
         .v-card video { width: 100%; height: 100%; object-fit: cover; }
         .v-info h4 { margin: 0; font-size: 15px; line-height: 1.4; }
 
-        /* Player Section */
         #playerSection { display: none; width: 100%; margin-bottom: 20px; }
-        .video-box { width: 100%; background: #000; overflow: hidden; position: relative; }
+        .video-box { width: 100%; background: #000; overflow: hidden; }
         video#mainPlayer { width: 100%; aspect-ratio: 16/9; display: block; background: #000; }
         
         .video-details { padding: 15px; }
@@ -47,7 +45,6 @@
         .btn { padding: 10px 20px; border-radius: 20px; border: none; font-weight: 500; cursor: pointer; background: #f2f2f2; text-decoration: none; color: #000; font-size: 14px; display: flex; align-items: center; gap: 5px; }
         .btn-down { background: #3ecf8e; color: white; }
 
-        /* Desktop Mode (YouTube Layout) */
         @media (min-width: 1000px) {
             header { flex-direction: row; padding: 10px 5%; }
             .search-area { margin: 0 20px; }
@@ -59,7 +56,6 @@
             .watch-mode .v-card .thumb-box { width: 160px; height: 90px; }
         }
 
-        /* Mobile Adjustments */
         @media (max-width: 600px) {
             .video-grid { grid-template-columns: 1fr; padding: 10px; }
             .v-card .thumb-box { border-radius: 0; }
@@ -82,10 +78,10 @@
     <div class="main-content">
         <div id="playerSection">
             <div class="video-box">
-                <video id="mainPlayer" controls playsinline preload="auto"></video>
+                <video id="mainPlayer" controls playsinline preload="auto" poster=""></video>
             </div>
             <div class="video-details">
-                <h2 id="videoTitle" style="font-size: 18px; margin:0;">ভিডিও লোড হচ্ছে...</h2>
+                <h2 id="videoTitle" style="font-size: 18px; margin:0;">লোডিং...</h2>
                 <div class="action-row">
                     <button class="btn" id="likeBtn" onclick="handleLike()">👍 <span id="likeCount">0</span></button>
                     <a id="downloadBtn" class="btn btn-down" href="#" download>⬇️ ডাউনলোড</a>
@@ -126,10 +122,18 @@
             const card = document.createElement('div');
             card.className = 'v-card';
             card.onclick = () => play(v);
-            // preload="none" দেওয়া হয়েছে যাতে মেমোরি বেঁচে যায় এবং ক্রাশ না হয়
+            
+            // থাম্বনেইল থাকলে ইমেজ দেখাবে, নাহলে ভিডিওর প্রিভিউ দেখাবে
+            let previewHTML = "";
+            if (v.thumbnail) {
+                previewHTML = `<img src="${v.thumbnail}" loading="lazy" alt="thumbnail">`;
+            } else {
+                previewHTML = `<video src="${v.url}#t=1" muted playsinline preload="none"></video>`;
+            }
+
             card.innerHTML = `
                 <div class="thumb-box">
-                    <video src="${v.url}#t=1" muted playsinline preload="none"></video>
+                    ${previewHTML}
                 </div>
                 <div class="v-info">
                     <h4>${v.title}</h4>
@@ -144,20 +148,23 @@
         const player = document.getElementById('mainPlayer');
         const layout = document.getElementById('mainLayout');
         
-        // প্লেয়ার ইন্টারফেস দেখানো
         document.getElementById('playerSection').style.display = 'block';
         layout.classList.add('watch-mode');
 
-        // ক্রাশ ঠেকাতে বিশেষ পদ্ধতি: আগে সোর্স একদম খালি করা
+        // ভিডিওর ব্রোকেন আইকন সরাতে পোস্টার সেট করা
+        if (video.thumbnail) {
+            player.poster = video.thumbnail;
+        } else {
+            player.removeAttribute('poster');
+        }
+
         player.pause();
         player.removeAttribute('src'); 
         player.load();
 
-        // ১ মিলি-সেকেন্ড বিরতি দিয়ে নতুন সোর্স দেওয়া (এটি ব্রাউজার হ্যাং হওয়া রোধ করে)
         setTimeout(() => {
             player.src = video.url;
             player.load();
-            // player.play() কল করা হয়নি, ইউজার নিজে প্লে করবে
         }, 100);
 
         document.getElementById('videoTitle').innerText = video.title;
