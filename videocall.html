@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pocket Classroom - অনলাইন ক্লাস (নো সার্ভার)</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
+    <!-- Simple Peer for WebRTC -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a1a; height: 100vh; overflow: hidden; }
+        .login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .login-card { background: rgba(255,255,255,0.95); border-radius: 40px; padding: 40px 30px; width: 90%; max-width: 380px; }
+        .login-card h1 { text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .login-card input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #e1e5e9; border-radius: 25px; font-size: 16px; }
+        .login-card button { width: 100%; padding: 15px; margin-top: 15px; border: none; border-radius: 25px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn-login { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-register { background: #f0f2f5; color: #333; }
+        .app { display: none; height: 100vh; background: #121016; position: relative; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: #1e1b24; z-index: 100; transition: transform 0.3s ease; transform: translateX(0); }
+        .sidebar.hide { transform: translateX(-100%); }
+        .sidebar-header { padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .user-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .user-email { font-size: 12px; opacity: 0.9; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+        .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 14px; border-radius: 20px; cursor: pointer; }
+        .search-box { padding: 15px; border-bottom: 1px solid #2a2730; }
+        .search-box input { width: 100%; padding: 10px 15px; border: none; border-radius: 25px; background: #2a2730; color: white; }
+        .groups-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2730; }
+        .create-group-icon { background: #667eea; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
+        .group-list { flex: 1; overflow-y: auto; height: calc(100% - 160px); }
+        .group-item { display: flex; align-items: center; padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #2a2730; }
+        .group-item:hover { background: #2a2730; }
+        .group-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 22px; color: white; margin-right: 15px; flex-shrink: 0; }
+        .group-info { flex: 1; min-width: 0; }
+        .group-name { color: white; font-weight: 600; margin-bottom: 5px; }
+        .group-last-msg { font-size: 12px; color: #888; }
+        .chat-area { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121016; z-index: 101; transition: transform 0.3s ease; transform: translateX(100%); }
+        .chat-area.show { transform: translateX(0); }
+        .chat-header { background: #1e1b24; padding: 15px 20px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #2a2730; }
+        .back-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        .chat-group-info { flex: 1; }
+        .chat-group-info h3 { color: white; font-size: 18px; }
+        .chat-group-info p { color: #888; font-size: 12px; }
+        .chat-actions { display: flex; gap: 10px; }
+        .chat-action-btn { background: none; border: none; color: white; font-size: 22px; cursor: pointer; padding: 8px; border-radius: 50%; }
+        .chat-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; height: calc(100% - 140px); }
+        .message { max-width: 75%; padding: 10px 15px; border-radius: 20px; }
+        .message.sent { align-self: flex-end; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-bottom-right-radius: 5px; }
+        .message.received { align-self: flex-start; background: #1e1b24; color: white; border-bottom-left-radius: 5px; }
+        .message-image { max-width: 200px; border-radius: 15px; margin-top: 5px; cursor: pointer; }
+        .message-time { font-size: 10px; margin-top: 5px; opacity: 0.6; }
+        .input-area { background: #1e1b24; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-top: 1px solid #2a2730; position: absolute; bottom: 0; left: 0; right: 0; }
+        .input-area input { flex: 1; padding: 12px 18px; border: none; border-radius: 25px; background: #2a2730; color: white; }
+        .input-btn { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; font-size: 20px; background: #2a2730; color: white; flex-shrink: 0; }
+        .send-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1500; align-items: center; justify-content: center; }
+        .modal-content { background: #1e1b24; border-radius: 30px; padding: 25px; width: 90%; max-width: 380px; color: white; }
+        .modal-content input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #2a2730; border-radius: 20px; background: #2a2730; color: white; }
+        .modal-content button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 25px; font-weight: 600; cursor: pointer; }
+        .share-link-box { background: #2a2730; padding: 12px; border-radius: 15px; word-break: break-all; margin: 10px 0; font-size: 12px; }
+        .member-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #2a2730; }
+        .kick-btn { background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 15px; cursor: pointer; }
+        .video-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 2000; display: none; flex-direction: column; }
+        .video-row { display: flex; flex: 1; gap: 10px; padding: 10px; }
+        .video-box { flex: 1; background: #000; border-radius: 10px; overflow: hidden; position: relative; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .call-controls { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; z-index: 2001; }
+        .call-controls button { width: 60px; height: 60px; border-radius: 50%; margin: 0 10px; border: none; font-size: 24px; cursor: pointer; }
+        .end-call { background: red; color: white; }
+        .join-call-btn { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        @media (min-width: 769px) { .sidebar { width: 320px; transform: translateX(0) !important; } .chat-area { left: 320px; width: calc(100% - 320px); transform: translateX(0) !important; } .back-btn { display: none; } }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <h1><i class="fas fa-chalkboard-teacher"></i> Pocket Classroom</h1>
+            <input type="email" id="loginEmail" placeholder="ইমেইল">
+            <input type="password" id="loginPassword" placeholder="পাসওয়ার্ড">
+            <button class="btn-login" onclick="login()">লগইন</button>
+            <button class="btn-register" onclick="showRegister()">নতুন অ্যাকাউন্ট খুলুন</button>
+        </div>
+    </div>
+
+    <div id="app" class="app">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Pocket Classroom</h2>
+                <div class="user-row">
+                    <span class="user-email" id="userEmail"></span>
+                    <button class="logout-btn" onclick="logout()">লগআউট</button>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchGroups" placeholder="🔍 ক্লাস খুঁজুন..." onkeyup="searchGroups()">
+            </div>
+            <div class="groups-header">
+                <h3>আমার ক্লাসসমূহ</h3>
+                <div class="create-group-icon" onclick="showCreateGroupModal()"><i class="fas fa-plus"></i></div>
+            </div>
+            <div class="group-list" id="groupList"></div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="chat-header">
+                <button class="back-btn" onclick="closeChat()"><i class="fas fa-arrow-left"></i></button>
+                <div class="chat-group-info">
+                    <h3 id="currentGroupName"></h3>
+                    <p id="currentGroupRole"></p>
+                </div>
+                <div class="chat-actions">
+                    <button class="chat-action-btn" id="callBtn" onclick="startVideoClass()"><i class="fas fa-video"></i> ক্লাস শুরু</button>
+                    <button class="chat-action-btn" onclick="showGroupInfo()"><i class="fas fa-users"></i></button>
+                </div>
+            </div>
+            <div class="messages-container" id="messagesContainer"></div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="মেসেজ লিখুন...">
+                <button class="input-btn" onclick="uploadImage()"><i class="fas fa-image"></i></button>
+                <button class="input-btn send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="videoCallContainer" class="video-container">
+        <div class="video-row">
+            <div class="video-box">
+                <video id="localVideo" autoplay muted playsinline></video>
+                <div style="position:absolute; bottom:10px; left:10px; color:white; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:10px;">আপনি</div>
+            </div>
+            <div class="video-box">
+                <video id="remoteVideo" autoplay playsinline></video>
+                <div style="position:absolute; bottom:10px; left:10px; color:white; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:10px;">শিক্ষক/শিক্ষার্থী</div>
+            </div>
+        </div>
+        <div class="call-controls">
+            <button onclick="toggleMic()"><i class="fas fa-microphone"></i></button>
+            <button onclick="toggleCamera()"><i class="fas fa-video"></i></button>
+            <button class="end-call" onclick="endVideoCall()"><i class="fas fa-phone-slash"></i></button>
+        </div>
+    </div>
+
+    <div id="createGroupModal" class="modal">
+        <div class="modal-content">
+            <h3>নতুন ক্লাস তৈরি</h3>
+            <input type="text" id="newGroupName" placeholder="ক্লাসের নাম">
+            <button class="btn-login" onclick="createGroup()">তৈরি করুন</button>
+            <button class="btn-register" onclick="closeModal('createGroupModal')">বাতিল</button>
+        </div>
+    </div>
+    <div id="groupInfoModal" class="modal">
+        <div class="modal-content">
+            <h3 id="infoGroupName"></h3>
+            <p>🔗 ক্লাস জয়েন লিংক:</p>
+            <div class="share-link-box" id="shareLink"></div>
+            <button class="btn-login" onclick="copyShareLink()">লিংক কপি করুন</button>
+            <div id="joinClassBtnContainer" style="margin: 15px 0;"></div>
+            <h4>শিক্ষার্থীরা</h4>
+            <div id="memberList"></div>
+            <button class="btn-register" onclick="closeModal('groupInfoModal')">বন্ধ</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTxzgfZ8IuPpqp4Q20cE8JZvif32pDhgc",
+            authDomain: "my-class-46989.firebaseapp.com",
+            projectId: "my-class-46989",
+            storageBucket: "my-class-46989.firebasestorage.app",
+            messagingSenderId: "716703687515",
+            appId: "1:716703687515:web:b9a11736e7f58e071c307e",
+            databaseURL: "https://my-class-46989-default-rtdb.firebaseio.com/"
+        };
+        const CLOUD_NAME = "debga1ysk";
+        const UPLOAD_PRESET = "my class";
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null, currentGroupId = null, currentGroup = null, isAdmin = false;
+        let messageListener = null, allGroups = [];
+        
+        // WebRTC Variables
+        let localStream = null;
+        let peerConnection = null;
+        let isCallActive = false;
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                document.getElementById('userEmail').innerText = user.email;
+                await loadGroups();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+            }
+        });
+
+        async function loadGroups() {
+            db.ref(`userGroups/${currentUser.uid}`).on('value', async (snapshot) => {
+                const groups = snapshot.val() || {};
+                const groupList = [];
+                for (let groupId in groups) {
+                    const groupData = await db.ref(`groups/${groupId}`).once('value');
+                    if (groupData.exists()) groupList.push({ id: groupId, ...groupData.val() });
+                }
+                allGroups = groupList;
+                displayGroups(groupList);
+            });
+        }
+
+        function displayGroups(groups) {
+            const container = document.getElementById('groupList');
+            container.innerHTML = '';
+            groups.forEach(group => {
+                const div = document.createElement('div');
+                div.className = 'group-item';
+                div.innerHTML = `
+                    <div class="group-avatar">${group.name.charAt(0).toUpperCase()}</div>
+                    <div class="group-info">
+                        <div class="group-name">${group.name}</div>
+                        <div class="group-last-msg">${group.lastMessage || 'কোনো মেসেজ নেই'}</div>
+                    </div>
+                `;
+                div.onclick = () => openGroup(group.id, group.name);
+                container.appendChild(div);
+            });
+        }
+
+        function searchGroups() {
+            const text = document.getElementById('searchGroups').value.toLowerCase();
+            displayGroups(allGroups.filter(g => g.name.toLowerCase().includes(text)));
+        }
+
+        async function openGroup(groupId, groupName) {
+            currentGroupId = groupId; currentGroup = groupName;
+            const groupData = await db.ref(`groups/${groupId}`).once('value');
+            isAdmin = groupData.val().admin === currentUser.uid;
+            document.getElementById('currentGroupName').innerHTML = groupName;
+            document.getElementById('currentGroupRole').innerHTML = isAdmin ? '👨‍🏫 শিক্ষক (অ্যাডমিন)' : '👩‍🎓 শিক্ষার্থী';
+            document.getElementById('callBtn').disabled = !isAdmin;
+            loadMessages(groupId);
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('hide');
+                document.getElementById('chatArea').classList.add('show');
+            }
+        }
+
+        function closeChat() {
+            document.getElementById('chatArea').classList.remove('show');
+            document.getElementById('sidebar').classList.remove('hide');
+            if (messageListener) messageListener.off();
+        }
+
+        function loadMessages(groupId) {
+            if (messageListener) messageListener.off();
+            messageListener = db.ref(`messages/${groupId}`).on('value', (snapshot) => {
+                displayMessages(snapshot.val() || {});
+            });
+        }
+
+        function displayMessages(messages) {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            Object.values(messages).sort((a,b) => a.timestamp - b.timestamp).forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
+                let content = `<div>${msg.text || ''}</div>`;
+                if (msg.imageUrl) content += `<img src="${msg.imageUrl}" class="message-image" onclick="window.open('${msg.imageUrl}')">`;
+                content += `<div class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>`;
+                div.innerHTML = content;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text) return;
+            await db.ref(`messages/${currentGroupId}`).push({ text, senderId: currentUser.uid, senderEmail: currentUser.email, timestamp: Date.now() });
+            await db.ref(`groups/${currentGroupId}`).update({ lastMessage: text });
+            input.value = '';
+        }
+
+        function uploadImage() {
+            cloudinary.createUploadWidget({ cloudName: CLOUD_NAME, uploadPreset: UPLOAD_PRESET }, (err, res) => {
+                if (!err && res && res.event === "success") {
+                    db.ref(`messages/${currentGroupId}`).push({ imageUrl: res.info.secure_url, senderId: currentUser.uid, senderEmail: currentUser.email, timestamp: Date.now() });
+                }
+            }).open();
+        }
+
+        async function createGroup() {
+            const name = document.getElementById('newGroupName').value.trim();
+            if (!name) return;
+            const groupId = db.ref('groups').push().key;
+            await db.ref(`groups/${groupId}`).set({ name, admin: currentUser.uid, createdAt: Date.now(), members: { [currentUser.uid]: { email: currentUser.email, joinedAt: Date.now() } } });
+            await db.ref(`userGroups/${currentUser.uid}/${groupId}`).set(true);
+            closeModal('createGroupModal');
+            document.getElementById('newGroupName').value = '';
+            openGroup(groupId, name);
+        }
+
+        window.joinGroup = async function(groupId) {
+            const snapshot = await db.ref(`groups/${groupId}`).once('value');
+            if (!snapshot.exists()) return alert('ক্লাস পাওয়া যায়নি!');
+            if (!snapshot.val().members[currentUser.uid]) {
+                await db.ref(`groups/${groupId}/members/${currentUser.uid}`).set({ email: currentUser.email, joinedAt: Date.now() });
+                await db.ref(`userGroups/${currentUser.uid}/${groupId}`).set(true);
+                alert('ক্লাসে জয়েন হয়েছেন!');
+                openGroup(groupId, snapshot.val().name);
+            }
+        };
+
+        // WebRTC Video Call Functions
+        async function startVideoClass() {
+            if (!isAdmin) {
+                alert('শুধু শিক্ষক ক্লাস শুরু করতে পারেন!');
+                return;
+            }
+            if (isCallActive) return;
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('videoCallContainer').style.display = 'flex';
+                isCallActive = true;
+                
+                // Create call document in Firebase
+                const callDoc = db.ref(`calls/${currentGroupId}`);
+                await callDoc.set({
+                    callerId: currentUser.uid,
+                    callerName: currentUser.email,
+                    active: true,
+                    startTime: Date.now()
+                });
+                
+                // Listen for answer
+                callDoc.child('answer').on('value', async (snapshot) => {
+                    const answer = snapshot.val();
+                    if (answer && peerConnection) {
+                        const answerDesc = new RTCSessionDescription(answer);
+                        await peerConnection.setRemoteDescription(answerDesc);
+                    }
+                });
+                
+                // Listen for ICE candidates
+                callDoc.child('candidates').on('child_added', async (snapshot) => {
+                    const candidate = snapshot.val();
+                    if (candidate && peerConnection) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                });
+                
+                // Create peer connection
+                peerConnection = new RTCPeerConnection(configuration);
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && callDoc) {
+                        callDoc.child('candidates').push(event.candidate);
+                    }
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    document.getElementById('remoteVideo').srcObject = event.streams[0];
+                };
+                
+                // Create offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                await callDoc.child('offer').set(offer);
+                
+                // Handle call end
+                callDoc.on('value', (snapshot) => {
+                    if (!snapshot.val() || !snapshot.val().active) {
+                        endVideoCall();
+                    }
+                });
+                
+            } catch (err) {
+                console.error(err);
+                alert('ক্যামেরা/মাইক্রোফোন অ্যাক্সেস প্রয়োজন');
+                endVideoCall();
+            }
+        }
+
+        async function joinVideoCall() {
+            if (isCallActive) return;
+            
+            const callDoc = db.ref(`calls/${currentGroupId}`);
+            const snapshot = await callDoc.once('value');
+            const call = snapshot.val();
+            
+            if (!call || !call.active) {
+                alert('শিক্ষক এখনো ক্লাস শুরু করেননি।');
+                return;
+            }
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('videoCallContainer').style.display = 'flex';
+                isCallActive = true;
+                
+                peerConnection = new RTCPeerConnection(configuration);
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && callDoc) {
+                        callDoc.child('candidates').push(event.candidate);
+                    }
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    document.getElementById('remoteVideo').srcObject = event.streams[0];
+                };
+                
+                const offer = call.offer;
+                if (offer) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    await callDoc.child('answer').set(answer);
+                }
+                
+                // Listen for new ICE candidates
+                callDoc.child('candidates').on('child_added', async (snapshot) => {
+                    const candidate = snapshot.val();
+                    if (candidate && peerConnection && !candidate.isAnswer) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                });
+                
+            } catch (err) {
+                console.error(err);
+                alert('ক্লাসে যোগ দিতে ব্যর্থ হয়েছে');
+                endVideoCall();
+            }
+        }
+
+        function toggleMic() {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                audioTrack.enabled = !audioTrack.enabled;
+            }
+        }
+        
+        function toggleCamera() {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                videoTrack.enabled = !videoTrack.enabled;
+            }
+        }
+
+        function endVideoCall() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (currentGroupId) {
+                const callDoc = db.ref(`calls/${currentGroupId}`);
+                callDoc.remove();
+            }
+            document.getElementById('videoCallContainer').style.display = 'none';
+            document.getElementById('localVideo').srcObject = null;
+            document.getElementById('remoteVideo').srcObject = null;
+            isCallActive = false;
+        }
+
+        async function showGroupInfo() {
+            const shareUrl = `${window.location.origin}${window.location.pathname}#join_${currentGroupId}`;
+            document.getElementById('shareLink').innerHTML = shareUrl;
+            document.getElementById('infoGroupName').innerHTML = currentGroup;
+            
+            // Add join button for students
+            const joinContainer = document.getElementById('joinClassBtnContainer');
+            if (!isAdmin) {
+                joinContainer.innerHTML = `<button class="join-call-btn" onclick="joinVideoCall()">🎥 ভিডিও ক্লাসে যোগ দিন</button>`;
+            } else {
+                joinContainer.innerHTML = '';
+            }
+            
+            const members = (await db.ref(`groups/${currentGroupId}/members`).once('value')).val() || {};
+            const container = document.getElementById('memberList');
+            container.innerHTML = '';
+            
+            for (let [uid, data] of Object.entries(members)) {
+                const isGroupAdmin = uid === (await db.ref(`groups/${currentGroupId}/admin`).once('value')).val();
+                const div = document.createElement('div');
+                div.className = 'member-item';
+                div.innerHTML = `<span>${data.email} ${isGroupAdmin ? '👨‍🏫 শিক্ষক' : '👩‍🎓 শিক্ষার্থী'}</span>${isAdmin && uid !== currentUser.uid ? `<button class="kick-btn" onclick="kickMember('${uid}')">ক্লাস থেকে বের করুন</button>` : ''}`;
+                container.appendChild(div);
+            }
+            document.getElementById('groupInfoModal').style.display = 'flex';
+        }
+
+        window.kickMember = async function(uid) {
+            if (!isAdmin) return;
+            await db.ref(`groups/${currentGroupId}/members/${uid}`).remove();
+            await db.ref(`userGroups/${uid}/${currentGroupId}`).remove();
+            showGroupInfo();
+        };
+
+        function copyShareLink() { navigator.clipboard.writeText(document.getElementById('shareLink').innerText); alert('লিংক কপি করা হয়েছে! শিক্ষার্থীদের পাঠান।'); }
+        function login() { auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value).catch(e => alert(e.message)); }
+        function showRegister() { const e = prompt('ইমেইল:'), p = prompt('পাসওয়ার্ড:'); if(e && p) auth.createUserWithEmailAndPassword(e,p).then(()=>alert('অ্যাকাউন্ট তৈরি সফল! লগইন করুন.')).catch(e=>alert(e.message)); }
+        function logout() { endVideoCall(); auth.signOut(); }
+        function showCreateGroupModal() { document.getElementById('createGroupModal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        window.addEventListener('load', () => { if(window.location.hash && window.location.hash.startsWith('#join_') && currentUser) setTimeout(() => joinGroup(window.location.hash.replace('#join_','')), 1000); });
+    </script>
+</body>
+</html>
