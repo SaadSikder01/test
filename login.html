@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pocket Classroom</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#667eea,#764ba2); height:100vh; margin:0; display:flex; align-items:center; justify-content:center; }
+        .card { background:white; color:#333; padding:40px 30px; border-radius:24px; width:90%; max-width:420px; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; }
+        .input { width:100%; padding:15px; margin:12px 0; border:2px solid #ddd; border-radius:50px; font-size:16px; }
+        .btn { width:100%; padding:15px; margin:10px 0; border:none; border-radius:50px; font-size:16px; font-weight:600; cursor:pointer; }
+        .btn-primary { background:linear-gradient(135deg,#667eea,#764ba2); color:white; }
+        .btn-secondary { background:#f1f3f5; color:#333; }
+        .avatar-preview { width:110px; height:110px; border-radius:50%; background:#eee; margin:15px auto; display:flex; align-items:center; justify-content:center; font-size:45px; cursor:pointer; overflow:hidden; border:3px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📚 Pocket Classroom</h1>
+        <p style="margin:15px 0 25px; color:#555;">myclassbd.shop</p>
+        
+        <input type="email" id="loginEmail" class="input" placeholder="ইমেইল">
+        <input type="password" id="loginPassword" class="input" placeholder="পাসওয়ার্ড">
+        
+        <button class="btn btn-primary" onclick="login()">লগইন করুন</button>
+        <button class="btn btn-secondary" onclick="showRegisterModal()">নতুন অ্যাকাউন্ট তৈরি করুন</button>
+    </div>
+
+    <!-- Register Modal with Profile Picture -->
+    <div id="registerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:3000; align-items:center; justify-content:center;">
+        <div class="card" style="background:#1e1b24; color:white; max-width:400px;">
+            <h1>নতুন অ্যাকাউন্ট</h1>
+            
+            <input type="file" id="profilePic" accept="image/*" style="display:none;" onchange="previewProfile(event)">
+            <div id="profilePreview" onclick="document.getElementById('profilePic').click()" class="avatar-preview">
+                📷
+            </div>
+            
+            <input type="email" id="regEmail" class="input" style="background:#2a2633;color:white;" placeholder="ইমেইল">
+            <input type="password" id="regPassword" class="input" style="background:#2a2633;color:white;" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)">
+            
+            <button class="btn btn-primary" onclick="register()">অ্যাকাউন্ট তৈরি করুন</button>
+            <button class="btn btn-secondary" onclick="closeRegisterModal()">বাতিল</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== আপনার Firebase Config ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTxzgfZ8IuPpqp4Q20cE8JZvif32pDhgc",
+            authDomain: "my-class-46989.firebaseapp.com",
+            projectId: "my-class-46989",
+            storageBucket: "my-class-46989.firebasestorage.app",
+            messagingSenderId: "716703687515",
+            appId: "1:716703687515:web:b9a11736e7f58e071c307e",
+            databaseURL: "https://my-class-46989-default-rtdb.firebaseio.com/"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        let profileBase64 = null;
+
+        function previewProfile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                profileBase64 = ev.target.result;
+                document.getElementById('profilePreview').innerHTML = `<img src="${profileBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPassword').value;
+            if (!email || !pass) return alert("ইমেইল ও পাসওয়ার্ড দিন");
+            
+            auth.signInWithEmailAndPassword(email, pass)
+                .then(() => window.location.href = "index.html")
+                .catch(e => alert("লগইন ব্যর্থ: " + e.message));
+        }
+
+        function showRegisterModal() {
+            document.getElementById('registerModal').style.display = 'flex';
+            profileBase64 = null;
+            document.getElementById('profilePreview').innerHTML = '📷';
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('registerModal').style.display = 'none';
+        }
+
+        function register() {
+            const email = document.getElementById('regEmail').value.trim();
+            const pass = document.getElementById('regPassword').value;
+            
+            if (!email || pass.length < 6) return alert("সঠিক ইমেইল ও পাসওয়ার্ড দিন");
+
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then(userCredential => {
+                    const user = userCredential.user;
+                    if (profileBase64) {
+                        firebase.database().ref('users/' + user.uid).set({
+                            email: email,
+                            profilePic: profileBase64,
+                            createdAt: Date.now()
+                        });
+                    }
+                    alert("অ্যাকাউন্ট তৈরি সফল! এখন লগইন করুন");
+                    closeRegisterModal();
+                })
+                .catch(e => alert("রেজিস্ট্রেশন ব্যর্থ: " + e.message));
+        }
+    </script>
+</body>
+</html>
