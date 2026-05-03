@@ -19,13 +19,14 @@
         .group-item:hover { background:#25222e; }
         .group-avatar { width:48px; height:48px; border-radius:50%; background:#667eea; display:flex; align-items:center; justify-content:center; font-size:20px; color:white; overflow:hidden; }
         .modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; align-items:center; justify-content:center; z-index:3000; }
-        .modal-content { background:#1e1b24; padding:25px; border-radius:20px; width:90%; max-width:420px; max-height:90vh; overflow-y:auto; }
+        .modal-content { background:#1e1b24; padding:25px; border-radius:20px; width:90%; max-width:420px; }
         .input-field { width:100%; padding:14px; margin:10px 0; border-radius:12px; background:#2a2633; border:none; color:white; }
         .btn { padding:12px 20px; border-radius:50px; border:none; cursor:pointer; font-weight:600; width:100%; margin-top:10px; }
         .btn-primary { background:#667eea; color:white; }
-        .btn-success { background:#10b981; color:white; }
-        .btn-danger { background:#dc2626; color:white; }
         .search-result { padding:12px; background:#2a2633; margin:8px; border-radius:12px; cursor:pointer; }
+        .message { max-width:78%; padding:12px 16px; border-radius:18px; margin:8px 12px; position:relative; }
+        .message.sent { background:#667eea; align-self:flex-end; border-bottom-right-radius:5px; }
+        .message.received { background:#2a2633; align-self:flex-start; border-bottom-left-radius:5px; }
     </style>
 </head>
 <body>
@@ -55,9 +56,10 @@
             <button onclick="showAdminPanel()" class="btn btn-primary" style="margin-left:10px;">👑 অ্যাডমিন</button>
             <button onclick="startGaleneCall()" class="btn btn-primary" style="margin-left:auto;">🎥 ভিডিও কল</button>
         </div>
-        <div id="messages" style="flex:1; overflow-y:auto; padding:20px;"></div>
-        <div style="padding:12px; background:#1e1b24; border-top:1px solid #2a2633;">
-            <input type="text" id="msgInput" placeholder="মেসেজ লিখুন..." style="width:100%; padding:14px; border-radius:50px; background:#2a2633; border:none; color:white;">
+        <div id="messages" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div style="padding:12px; background:#1e1b24; border-top:1px solid #2a2633; display:flex; gap:8px;">
+            <input type="text" id="msgInput" placeholder="মেসেজ লিখুন..." style="flex:1; padding:14px; border-radius:50px; background:#2a2633; border:none; color:white;" onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" class="btn btn-primary">পাঠান</button>
         </div>
     </div>
 </div>
@@ -81,8 +83,7 @@
 <!-- Admin Panel Modal -->
 <div id="adminModal" class="modal">
     <div class="modal-content">
-        <h3>👑 অ্যাডমিন প্যানেল</h3>
-        <h4>জয়েন রিকোয়েস্ট</h4>
+        <h3>👑 অ্যাডমিন প্যানেল - রিকোয়েস্ট</h3>
         <div id="requestsList"></div>
         <button onclick="closeAdminModal()" class="btn" style="background:#555;margin-top:15px;">বন্ধ</button>
     </div>
@@ -238,6 +239,40 @@ function openGroup(groupId, group) {
     currentGroupId = groupId;
     document.getElementById('groupTitle').innerText = group.name;
     document.getElementById('chatArea').style.display = 'flex';
+    loadMessages(groupId);
+}
+
+function loadMessages(groupId) {
+    const container = document.getElementById('messages');
+    db.ref(`messages/${groupId}`).on('value', (snapshot) => {
+        container.innerHTML = '';
+        const messages = snapshot.val() || {};
+        Object.values(messages).sort((a,b) => a.timestamp - b.timestamp).forEach(msg => {
+            const div = document.createElement('div');
+            div.className = `message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
+            div.innerHTML = `
+                <strong style="font-size:12px;">${msg.senderEmail}</strong><br>
+                ${msg.text}
+                <small style="display:block;margin-top:5px;opacity:0.7;">${new Date(msg.timestamp).toLocaleTimeString()}</small>
+            `;
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text || !currentGroupId) return;
+
+    db.ref(`messages/${currentGroupId}`).push({
+        text: text,
+        senderId: currentUser.uid,
+        senderEmail: currentUser.email,
+        timestamp: Date.now()
+    });
+    input.value = '';
 }
 
 function showCreateGroupModal() {
@@ -295,7 +330,7 @@ function loadRequests() {
 async function approveRequest(uid) {
     await db.ref(`groupRequests/${currentGroupId}/${uid}`).remove();
     await db.ref(`groups/${currentGroupId}/members/${uid}`).set({
-        email: "user@example.com", // পরে সঠিক ইমেইল নেওয়া যাবে
+        email: "user@example.com",
         joinedAt: Date.now(),
         status: 'approved'
     });
@@ -309,8 +344,6 @@ async function rejectRequest(uid) {
     alert("রিকোয়েস্ট বাতিল করা হয়েছে");
     loadRequests();
 }
-
-function sendMessage() { alert("চ্যাট ফিচার শিগগিরই আসছে"); }
 </script>
 </body>
 </html>
