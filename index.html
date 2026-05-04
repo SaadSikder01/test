@@ -171,22 +171,27 @@ function loadUserGroups() {
 function searchGroups() {
     const query = document.getElementById('searchBar').value.trim().toUpperCase();
     const resultsContainer = document.getElementById('searchResults');
+    
     if (query.length < 2) {
         resultsContainer.innerHTML = '';
         return;
     }
 
-    db.ref('groups').orderByChild('groupId').equalTo(query).once('value', (snapshot) => {
+    db.ref('groups').orderByChild('groupId').equalTo(query).once('value', async (snapshot) => {
         resultsContainer.innerHTML = '';
         const groups = snapshot.val() || {};
+        
         if (Object.keys(groups).length === 0) {
             resultsContainer.innerHTML = `<p style="color:#888;padding:15px;">কোনো গ্রুপ পাওয়া যায়নি</p>`;
             return;
         }
+
         for (let groupId in groups) {
             const group = groups[groupId];
-            const isOwnGroup = group.admin === currentUser.uid;
-
+            
+            // চেক করা হচ্ছে ইউজার ইতিমধ্যে গ্রুপের সদস্য কি না
+            const isMember = await db.ref(`userGroups/${currentUser.uid}/${groupId}`).once('value');
+            
             const div = document.createElement('div');
             div.className = 'search-result';
             div.innerHTML = `
@@ -199,16 +204,17 @@ function searchGroups() {
                 </div>
             `;
 
-            if (isOwnGroup) {
+            if (isMember.exists()) {
+                // ইতিমধ্যে সদস্য
                 div.innerHTML += `<button onclick="openGroup('${groupId}', ${JSON.stringify(group)})" style="margin-top:8px;background:#667eea;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;width:100%;">গ্রুপ খুলুন</button>`;
             } else {
+                // নতুন জয়েন রিকোয়েস্ট
                 div.innerHTML += `<button onclick="sendJoinRequest('${groupId}', '${group.name}')" style="margin-top:8px;background:#10b981;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;width:100%;">জয়েন রিকোয়েস্ট পাঠান</button>`;
             }
             resultsContainer.appendChild(div);
         }
     });
 }
-
 async function sendJoinRequest(groupId, groupName) {
     await db.ref(`groupRequests/${groupId}/${currentUser.uid}`).set({
         userId: currentUser.uid,
