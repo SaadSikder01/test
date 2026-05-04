@@ -28,7 +28,7 @@
         .message.received { background:#2a2633; align-self:flex-start; border-bottom-left-radius:5px; }
         .message img { max-width:240px; border-radius:12px; margin-top:8px; cursor:pointer; }
         .input-area { padding:12px; background:#1e1b24; border-top:1px solid #2a2633; display:flex; align-items:center; gap:8px; }
-        .preview-area { padding:8px 12px; background:#2a2633; border-top:1px solid #2a2633; display:none; align-items:center; gap:10px; }
+        .preview-area { padding:8px 12px; background:#2a2633; border-top:1px solid #2a2633; display:none; align-items:center; gap:10px; flex-wrap:wrap; }
     </style>
 </head>
 <body>
@@ -60,25 +60,33 @@
         </div>
         <div id="messages" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px;"></div>
         
-        <!-- Preview Area -->
         <div id="imagePreviewArea" class="preview-area"></div>
         
-        <!-- Input Area -->
         <div class="input-area">
-            <input type="file" id="chatImage" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
             <button onclick="document.getElementById('chatImage').click()" class="btn" style="background:#2a2633;color:white;width:50px;">📷</button>
+            <input type="file" id="chatImage" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
             <input type="text" id="msgInput" placeholder="মেসেজ লিখুন..." style="flex:1; padding:14px; border-radius:50px; background:#2a2633; border:none; color:white;" onkeypress="if(event.key==='Enter') sendMessage()">
-            <button onclick="sendMessage()" class="btn btn-primary" style="width:60px;">পাঠান</button>
+            <button onclick="sendMessage()" class="btn btn-primary" style="width:70px;">পাঠান</button>
         </div>
     </div>
 </div>
 
-<!-- অন্যান্য মোডাল (Create + Admin) আগের মতো রাখা হয়েছে -->
-<!-- ... (স্পেস বাঁচাতে বাদ দেওয়া হয়েছে, আগের কোড থেকে কপি করে নিন) -->
+<!-- Create & Admin Modal (সংক্ষিপ্ত) -->
+<div id="createModal" class="modal"> ... </div>
+<div id="adminModal" class="modal"> ... </div>
 
 <script>
-// আপনার Firebase Config
-const firebaseConfig = { /* আপনার কনফিগ */ };
+// ==================== Firebase Config ====================
+const firebaseConfig = {
+    apiKey: "AIzaSyDTxzgfZ8IuPpqp4Q20cE8JZvif32pDhgc",
+    authDomain: "my-class-46989.firebaseapp.com",
+    projectId: "my-class-46989",
+    storageBucket: "my-class-46989.firebasestorage.app",
+    messagingSenderId: "716703687515",
+    appId: "1:716703687515:web:b9a11736e7f58e071c307e",
+    databaseURL: "https://my-class-46989-default-rtdb.firebaseio.com/"
+};
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
@@ -95,11 +103,10 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// Image Select & Preview
+// Image Select
 function handleImageSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = function(e) {
         pendingImage = e.target.result;
@@ -111,8 +118,8 @@ function handleImageSelect(event) {
 function showImagePreview() {
     const area = document.getElementById('imagePreviewArea');
     area.innerHTML = `
-        <img src="${pendingImage}" style="max-height:80px;border-radius:8px;">
-        <button onclick="sendPendingImage()" class="btn btn-primary" style="margin-left:auto;">পাঠান</button>
+        <img src="${pendingImage}" style="max-height:90px;border-radius:8px;">
+        <button onclick="sendPendingImage()" class="btn btn-primary">পাঠান</button>
         <button onclick="cancelImagePreview()" class="btn" style="background:#dc2626;color:white;">বাতিল</button>
     `;
     area.style.display = 'flex';
@@ -125,14 +132,12 @@ function cancelImagePreview() {
 
 function sendPendingImage() {
     if (!pendingImage || !currentGroupId) return;
-    
     db.ref(`messages/${currentGroupId}`).push({
         imageUrl: pendingImage,
         senderId: currentUser.uid,
         senderEmail: currentUser.email,
         timestamp: Date.now()
     });
-    
     cancelImagePreview();
 }
 
@@ -150,8 +155,7 @@ function sendMessage() {
     }
 }
 
-// বাকি ফাংশন (loadMessages, openGroup ইত্যাদি) আগের মতো রাখুন
-// (পুরো কোড লম্বা হয়ে যাবে, তাই শুধু পরিবর্তিত অংশ দিলাম)
+// বাকি ফাংশন (loadUserGroups, searchGroups, openGroup, loadMessages ইত্যাদি) আগের সফল কোড থেকে রাখুন
 
 function loadMessages(groupId) {
     const container = document.getElementById('messages');
@@ -164,7 +168,7 @@ function loadMessages(groupId) {
             if (msg.imageUrl) {
                 div.innerHTML = `<img src="${msg.imageUrl}" onclick="openFullImage('${msg.imageUrl}')">`;
             } else {
-                div.innerHTML = msg.text;
+                div.innerHTML = msg.text || '';
             }
             container.appendChild(div);
         });
@@ -173,9 +177,182 @@ function loadMessages(groupId) {
 }
 
 function openFullImage(url) {
-    const win = window.open('');
-    win.document.write(`<img src="${url}" style="max-width:100%;height:auto;">`);
+    window.open(url, '_blank');
 }
+
+// অন্যান্য ফাংশন (createGroup, openGroup, showCreateGroupModal ইত্যাদি) আপনার আগের কোড থেকে রাখুন
+// ==================== গ্রুপ তৈরি ====================
+async function createGroup() {
+    const name = document.getElementById('gName').value.trim();
+    let gid = document.getElementById('gId').value.trim().toUpperCase();
+
+    if (!name || !gid) return alert("গ্রুপের নাম এবং ইউনিক আইডি দিন!");
+
+    const snap = await db.ref('groups').orderByChild('groupId').equalTo(gid).once('value');
+    if (snap.exists()) return alert("এই ইউনিক আইডি ইতিমধ্যে ব্যবহৃত হয়েছে!");
+
+    const groupId = db.ref('groups').push().key;
+
+    await db.ref(`groups/${groupId}`).set({
+        name: name,
+        groupId: gid,
+        admin: currentUser.uid,
+        avatarUrl: groupAvatarBase64,
+        createdAt: Date.now()
+    });
+
+    await db.ref(`userGroups/${currentUser.uid}/${groupId}`).set(true);
+
+    closeModal();
+    alert("✅ গ্রুপ সফলভাবে তৈরি হয়েছে!");
+    groupAvatarBase64 = null;
+}
+
+// ==================== ইউজারের গ্রুপ লোড ====================
+function loadUserGroups() {
+    const container = document.getElementById('groupList');
+    db.ref(`userGroups/${currentUser.uid}`).on('value', async (snapshot) => {
+        container.innerHTML = '';
+        const groups = snapshot.val() || {};
+        
+        if (Object.keys(groups).length === 0) {
+            container.innerHTML = `<p style="color:#888;padding:30px;text-align:center;">কোনো গ্রুপ নেই। নতুন গ্রুপ তৈরি করুন।</p>`;
+            return;
+        }
+
+        for (let groupId in groups) {
+            const g = await db.ref(`groups/${groupId}`).once('value');
+            const group = g.val();
+            if (!group) continue;
+
+            const div = document.createElement('div');
+            div.className = 'group-item';
+            div.innerHTML = `
+                <div class="group-avatar">
+                    ${group.avatarUrl ? `<img src="${group.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">` : group.name[0]}
+                </div>
+                <div>
+                    <div style="font-weight:600;">${group.name}</div>
+                    <div style="font-size:13px;color:#aaa;">${group.groupId}</div>
+                </div>
+            `;
+            div.onclick = () => openGroup(groupId, group);
+            container.appendChild(div);
+        }
+    });
+}
+
+// ==================== সার্চ ====================
+function searchGroups() {
+    const query = document.getElementById('searchBar').value.trim().toUpperCase();
+    const resultsContainer = document.getElementById('searchResults');
+    
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '';
+        return;
+    }
+
+    db.ref('groups').orderByChild('groupId').equalTo(query).once('value', (snapshot) => {
+        resultsContainer.innerHTML = '';
+        const groups = snapshot.val() || {};
+        
+        if (Object.keys(groups).length === 0) {
+            resultsContainer.innerHTML = `<p style="color:#888;padding:15px;">কোনো গ্রুপ পাওয়া যায়নি</p>`;
+            return;
+        }
+
+        for (let groupId in groups) {
+            const group = groups[groupId];
+            const isOwnGroup = group.admin === currentUser.uid;
+
+            const div = document.createElement('div');
+            div.className = 'search-result';
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="group-avatar">${group.avatarUrl ? `<img src="${group.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">` : group.name[0]}</div>
+                    <div>
+                        <div style="font-weight:600;">${group.name}</div>
+                        <div style="color:#aaa;">${group.groupId}</div>
+                    </div>
+                </div>
+            `;
+
+            if (isOwnGroup) {
+                div.innerHTML += `<button onclick="openGroup('${groupId}', ${JSON.stringify(group)})" style="margin-top:8px;background:#667eea;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;width:100%;">গ্রুপ খুলুন</button>`;
+            } else {
+                div.innerHTML += `<button onclick="sendJoinRequest('${groupId}', '${group.name}')" style="margin-top:8px;background:#10b981;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;width:100%;">জয়েন রিকোয়েস্ট পাঠান</button>`;
+            }
+            resultsContainer.appendChild(div);
+        }
+    });
+}
+
+// ==================== জয়েন রিকোয়েস্ট ====================
+async function sendJoinRequest(groupId, groupName) {
+    await db.ref(`groupRequests/${groupId}/${currentUser.uid}`).set({
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        requestedAt: Date.now(),
+        status: 'pending'
+    });
+    alert(`"${groupName}" গ্রুপে জয়েন রিকোয়েস্ট পাঠানো হয়েছে!`);
+    document.getElementById('searchBar').value = '';
+    document.getElementById('searchResults').innerHTML = '';
+}
+
+// ==================== গ্রুপ খোলা ====================
+function openGroup(groupId, group) {
+    currentGroupId = groupId;
+    document.getElementById('groupTitle').innerText = group.name;
+    document.getElementById('chatArea').style.display = 'flex';
+    loadMessages(groupId);
+}
+
+// ==================== মেসেজ লোড ====================
+function loadMessages(groupId) {
+    const container = document.getElementById('messages');
+    db.ref(`messages/${groupId}`).on('value', (snapshot) => {
+        container.innerHTML = '';
+        const messages = snapshot.val() || {};
+        Object.values(messages).sort((a,b) => a.timestamp - b.timestamp).forEach(msg => {
+            const div = document.createElement('div');
+            div.className = `message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
+            if (msg.imageUrl) {
+                div.innerHTML = `<img src="${msg.imageUrl}" onclick="openFullImage('${msg.imageUrl}')">`;
+            } else {
+                div.innerHTML = msg.text || '';
+            }
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+function openFullImage(url) {
+    window.open(url, '_blank');
+}
+
+// ==================== মোডাল কন্ট্রোল ====================
+function showCreateGroupModal() {
+    document.getElementById('createModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('createModal').style.display = 'none';
+}
+
+// ==================== ভিডিও কল ====================
+function startGaleneCall() {
+    window.open('https://meet.myclassbd.shop', '_blank');
+}
+
+// ==================== অ্যাডমিন প্যানেল ====================
+function showAdminPanel() {
+    if (!currentGroupId) return alert("প্রথমে একটা গ্রুপ খুলুন");
+    // আপনার আগের অ্যাডমিন কোড এখানে যোগ করুন
+    alert("অ্যাডমিন প্যানেল শিগগিরই পুরোপুরি যোগ করা হবে");
+}
+    
 </script>
 </body>
 </html>
