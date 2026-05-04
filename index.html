@@ -113,7 +113,7 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// ==================== গ্রুপ তৈরি ====================
+// গ্রুপ তৈরি
 async function createGroup() {
     const name = document.getElementById('gName').value.trim();
     let gid = document.getElementById('gId').value.trim().toUpperCase();
@@ -133,185 +133,69 @@ async function createGroup() {
     groupAvatarBase64 = null;
 }
 
-// ==================== ইউজারের গ্রুপ লোড ====================
+// ==================== স্মার্ট গ্রুপ লিস্ট ====================
 function loadUserGroups() {
     const container = document.getElementById('groupList');
     db.ref(`userGroups/${currentUser.uid}`).on('value', async (snapshot) => {
         container.innerHTML = '';
-        const groups = snapshot.val() || {};
-        if (Object.keys(groups).length === 0) {
-            container.innerHTML = `<p style="color:#888;padding:30px;text-align:center;">কোনো গ্রুপ নেই। নতুন গ্রুপ তৈরি করুন।</p>`;
-            return;
-        }
-        for (let groupId in groups) {
-            const g = await db.ref(`groups/${groupId}`).once('value');
-            const group = g.val();
+        const userGroups = snapshot.val() || {};
+        let groupList = [];
+
+        for (let groupId in userGroups) {
+            const groupSnap = await db.ref(`groups/${groupId}`).once('value');
+            const group = groupSnap.val();
             if (!group) continue;
+
+            // লাস্ট মেসেজ নেওয়া
+            const msgSnap = await db.ref(`messages/${groupId}`).limitToLast(1).once('value');
+            let lastMsg = "কোনো মেসেজ নেই";
+            let lastTime = group.createdAt || 0;
+
+            msgSnap.forEach(child => {
+                const m = child.val();
+                lastMsg = m.text ? m.text.substring(0, 35) + (m.text.length > 35 ? "..." : "") : (m.imageUrl ? "📷 ছবি" : "কোনো মেসেজ নেই");
+                lastTime = m.timestamp || lastTime;
+            });
+
+            groupList.push({
+                id: groupId,
+                ...group,
+                lastMessage: lastMsg,
+                lastTimestamp: lastTime
+            });
+        }
+
+        // সর্বশেষ মেসেজ অনুসারে সর্ট
+        groupList.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+
+        groupList.forEach(group => {
             const div = document.createElement('div');
             div.className = 'group-item';
             div.innerHTML = `
                 <div class="group-avatar">${group.avatarUrl ? `<img src="${group.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">` : group.name[0]}</div>
-                <div>
+                <div style="flex:1; min-width:0;">
                     <div style="font-weight:600;">${group.name}</div>
-                    <div style="font-size:13px;color:#aaa;">${group.groupId}</div>
-                </div>
-            `;
-            div.onclick = () => openGroup(groupId, group);
-            container.appendChild(div);
-        }
-    });
-}
-
-// ==================== সার্চ ====================
-function searchGroups() {
-    const query = document.getElementById('searchBar').value.trim().toUpperCase();
-    const resultsContainer = document.getElementById('searchResults');
-    if (query.length < 2) {
-        resultsContainer.innerHTML = '';
-        return;
-    }
-    db.ref('groups').orderByChild('groupId').equalTo(query).once('value', async (snapshot) => {
-        resultsContainer.innerHTML = '';
-        const groups = snapshot.val() || {};
-        if (Object.keys(groups).length === 0) {
-            resultsContainer.innerHTML = `<p style="color:#888;padding:15px;">কোনো গ্রুপ পাওয়া যায়নি</p>`;
-            return;
-        }
-        for (let groupId in groups) {
-            const group = groups[groupId];
-            const isMember = await db.ref(`userGroups/${currentUser.uid}/${groupId}`).once('value');
-            const div = document.createElement('div');
-            div.className = 'search-result';
-            div.innerHTML = `
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div class="group-avatar">${group.avatarUrl ? `<img src="${group.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">` : group.name[0]}</div>
-                    <div>
-                        <div style="font-weight:600;">${group.name}</div>
-                        <div style="color:#aaa;">${group.groupId}</div>
+                    <div style="font-size:13px; color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${group.lastMessage}
                     </div>
                 </div>
             `;
-            if (isMember.exists()) {
-                div.innerHTML += `<button onclick="openGroup('${groupId}', ${JSON.stringify(group)})" style="margin-top:8px;background:#667eea;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;width:100%;">গ্রুপ খুলুন</button>`;
-            } else {
-                div.innerHTML += `<button onclick="sendJoinRequest('${groupId}', '${group.name}')" style="margin-top:8px;background:#10b981;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;width:100%;">জয়েন রিকোয়েস্ট পাঠান</button>`;
-            }
-            resultsContainer.appendChild(div);
+            div.onclick = () => openGroup(group.id, group);
+            container.appendChild(div);
+        });
+
+        if (groupList.length === 0) {
+            container.innerHTML = `<p style="color:#888;padding:30px;text-align:center;">কোনো গ্রুপ নেই। নতুন গ্রুপ তৈরি করুন।</p>`;
         }
     });
 }
 
-// ==================== অন্যান্য ফাংশন ====================
-async function sendJoinRequest(groupId, groupName) {
-    await db.ref(`groupRequests/${groupId}/${currentUser.uid}`).set({
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        requestedAt: Date.now(),
-        status: 'pending'
-    });
-    alert(`"${groupName}" গ্রুপে জয়েন রিকোয়েস্ট পাঠানো হয়েছে!`);
-    document.getElementById('searchBar').value = '';
-    document.getElementById('searchResults').innerHTML = '';
-}
+// বাকি ফাংশন (searchGroups, openGroup, loadMessages, sendMessage ইত্যাদি) আগের মতো রাখুন
+// (আপনার কোডে যা আছে তা রাখুন, শুধু loadUserGroups প্রতিস্থাপন করুন)
 
-function openGroup(groupId, group) {
-    currentGroupId = groupId;
-    document.getElementById('groupTitle').innerText = group.name;
-    document.getElementById('chatArea').style.display = 'flex';
-    loadMessages(groupId);
-}
-
-function loadMessages(groupId) {
-    const container = document.getElementById('messages');
-    db.ref(`messages/${groupId}`).on('value', (snapshot) => {
-        container.innerHTML = '';
-        const messages = snapshot.val() || {};
-        Object.values(messages).sort((a,b) => a.timestamp - b.timestamp).forEach(msg => {
-            const div = document.createElement('div');
-            div.className = `message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
-            if (msg.imageUrl) {
-                div.innerHTML = `<img src="${msg.imageUrl}" onclick="openFullImage('${msg.imageUrl}')">`;
-            } else {
-                div.innerHTML = msg.text || '';
-            }
-            container.appendChild(div);
-        });
-        container.scrollTop = container.scrollHeight;
-    });
-}
-
-function openFullImage(url) {
-    const modal = document.createElement('div');
-    modal.style = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:5000;display:flex;align-items:center;justify-content:center;`;
-    modal.innerHTML = `<img src="${url}" style="max-width:95%;max-height:95%;border-radius:12px;"><div onclick="this.parentElement.remove()" style="position:absolute;top:20px;right:20px;color:white;font-size:40px;cursor:pointer;">✕</div>`;
-    document.body.appendChild(modal);
-}
-
-function showCreateGroupModal() {
-    document.getElementById('createModal').style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('createModal').style.display = 'none';
-}
-
-function startGaleneCall() {
-    window.open('https://meet.myclassbd.shop', '_blank');
-}
-
-// ==================== ছবি প্রিভিউ ====================
-function handleImageSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        pendingImageBase64 = e.target.result;
-        showImagePreview();
-    };
-    reader.readAsDataURL(file);
-}
-
-function showImagePreview() {
-    const area = document.getElementById('imagePreviewArea');
-    area.innerHTML = `
-        <img src="${pendingImageBase64}" style="max-height:85px;border-radius:10px;max-width:200px;">
-        <div style="margin-left:auto;display:flex;gap:8px;">
-            <button onclick="sendPendingImage()" class="btn btn-primary">পাঠান</button>
-            <button onclick="cancelImagePreview()" class="btn" style="background:#dc2626;color:white;">বাতিল</button>
-        </div>
-    `;
-    area.style.display = 'flex';
-}
-
-function cancelImagePreview() {
-    pendingImageBase64 = null;
-    document.getElementById('imagePreviewArea').style.display = 'none';
-}
-
-function sendPendingImage() {
-    if (!pendingImageBase64 || !currentGroupId) return;
-    db.ref(`messages/${currentGroupId}`).push({
-        imageUrl: pendingImageBase64,
-        senderId: currentUser.uid,
-        senderEmail: currentUser.email,
-        timestamp: Date.now()
-    });
-    cancelImagePreview();
-}
-
-function sendMessage() {
-    const input = document.getElementById('msgInput');
-    const text = input.value.trim();
-    if (text && currentGroupId) {
-        db.ref(`messages/${currentGroupId}`).push({
-            text: text,
-            senderId: currentUser.uid,
-            senderEmail: currentUser.email,
-            timestamp: Date.now()
-        });
-        input.value = '';
-    }
-}
+function showCreateGroupModal() { document.getElementById('createModal').style.display = 'flex'; }
+function closeModal() { document.getElementById('createModal').style.display = 'none'; }
+function startGaleneCall() { window.open('https://meet.myclassbd.shop', '_blank'); }
 </script>
 </body>
 </html>
