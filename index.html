@@ -352,6 +352,26 @@ function showAdminPanel() {
     // আপনার আগের অ্যাডমিন কোড এখানে যোগ করুন
     alert("অ্যাডমিন প্যানেল শিগগিরই পুরোপুরি যোগ করা হবে");
 }
+// ==================== ফুল স্ক্রিন ইমেজ ভিউয়ার ====================
+function openFullImage(url) {
+    const modal = document.createElement('div');
+    modal.style = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.95); z-index: 4000; display: flex; 
+        align-items: center; justify-content: center; cursor: zoom-out;
+    `;
+    
+    modal.innerHTML = `
+        <img src="${url}" style="max-width:95%; max-height:95%; border-radius:12px; box-shadow:0 0 30px rgba(0,0,0,0.8);">
+        <div style="position:absolute; top:20px; right:20px; color:white; font-size:30px; cursor:pointer;" onclick="this.parentElement.remove()">✕</div>
+    `;
+    
+    modal.onclick = function(e) {
+        if (e.target.tagName !== "IMG") modal.remove();
+    };
+    
+    document.body.appendChild(modal);
+}
     
 </script>
 </body>
