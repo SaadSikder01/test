@@ -85,7 +85,7 @@
 </div>
 
 <script>
-// Firebase Config
+// ==================== Firebase Config ====================
 const firebaseConfig = {
     apiKey: "AIzaSyDTxzgfZ8IuPpqp4Q20cE8JZvif32pDhgc",
     authDomain: "my-class-46989.firebaseapp.com",
@@ -113,14 +113,14 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// গ্রুপ তৈরি
+// ==================== গ্রুপ তৈরি ====================
 async function createGroup() {
     const name = document.getElementById('gName').value.trim();
     let gid = document.getElementById('gId').value.trim().toUpperCase();
     if (!name || !gid) return alert("নাম ও আইডি দিন!");
 
     const snap = await db.ref('groups').orderByChild('groupId').equalTo(gid).once('value');
-    if (snap.exists()) return alert("এই আইডি আগে থেকে আছে!");
+    if (snap.exists()) return alert("এই আইডি ইতিমধ্যে আছে!");
 
     const groupId = db.ref('groups').push().key;
     await db.ref(`groups/${groupId}`).set({
@@ -133,7 +133,7 @@ async function createGroup() {
     groupAvatarBase64 = null;
 }
 
-// ==================== স্মার্ট গ্রুপ লিস্ট ====================
+// ==================== স্মার্ট গ্রুপ লিস্ট (নতুন মেসেজ অনুসারে উপরে) ====================
 function loadUserGroups() {
     const container = document.getElementById('groupList');
     db.ref(`userGroups/${currentUser.uid}`).on('value', async (snapshot) => {
@@ -146,22 +146,16 @@ function loadUserGroups() {
             const group = groupSnap.val();
             if (!group) continue;
 
-            // লাস্ট মেসেজ নেওয়া
-            const msgSnap = await db.ref(`messages/${groupId}`).limitToLast(1).once('value');
-            let lastMsg = "কোনো মেসেজ নেই";
-            let lastTime = group.createdAt || 0;
+            const lastMsgSnap = await db.ref(`messages/${groupId}`).limitToLast(1).once('value');
+            let lastMsg = { timestamp: group.createdAt || 0, text: "" };
 
-            msgSnap.forEach(child => {
-                const m = child.val();
-                lastMsg = m.text ? m.text.substring(0, 35) + (m.text.length > 35 ? "..." : "") : (m.imageUrl ? "📷 ছবি" : "কোনো মেসেজ নেই");
-                lastTime = m.timestamp || lastTime;
-            });
+            lastMsgSnap.forEach(s => lastMsg = s.val());
 
             groupList.push({
                 id: groupId,
                 ...group,
-                lastMessage: lastMsg,
-                lastTimestamp: lastTime
+                lastTimestamp: lastMsg.timestamp || 0,
+                lastText: lastMsg.text || (lastMsg.imageUrl ? "📷 ছবি" : "কোনো মেসেজ নেই")
             });
         }
 
@@ -173,29 +167,54 @@ function loadUserGroups() {
             div.className = 'group-item';
             div.innerHTML = `
                 <div class="group-avatar">${group.avatarUrl ? `<img src="${group.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">` : group.name[0]}</div>
-                <div style="flex:1; min-width:0;">
+                <div style="flex:1;">
                     <div style="font-weight:600;">${group.name}</div>
-                    <div style="font-size:13px; color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${group.lastMessage}
-                    </div>
+                    <div style="font-size:13px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${group.lastText}</div>
                 </div>
             `;
             div.onclick = () => openGroup(group.id, group);
             container.appendChild(div);
         });
-
-        if (groupList.length === 0) {
-            container.innerHTML = `<p style="color:#888;padding:30px;text-align:center;">কোনো গ্রুপ নেই। নতুন গ্রুপ তৈরি করুন।</p>`;
-        }
     });
 }
 
-// বাকি ফাংশন (searchGroups, openGroup, loadMessages, sendMessage ইত্যাদি) আগের মতো রাখুন
-// (আপনার কোডে যা আছে তা রাখুন, শুধু loadUserGroups প্রতিস্থাপন করুন)
+// ==================== বাকি ফাংশন ====================
+function searchGroups() { /* আগের কোড থেকে রাখুন */ }
+async function sendJoinRequest(groupId, groupName) { /* আগের কোড */ }
+function openGroup(groupId, group) {
+    currentGroupId = groupId;
+    document.getElementById('groupTitle').innerText = group.name;
+    document.getElementById('chatArea').style.display = 'flex';
+    loadMessages(groupId);
+}
 
-function showCreateGroupModal() { document.getElementById('createModal').style.display = 'flex'; }
-function closeModal() { document.getElementById('createModal').style.display = 'none'; }
-function startGaleneCall() { window.open('https://meet.myclassbd.shop', '_blank'); }
+function loadMessages(groupId) {
+    const container = document.getElementById('messages');
+    db.ref(`messages/${groupId}`).on('value', (snapshot) => {
+        container.innerHTML = '';
+        const messages = snapshot.val() || {};
+        Object.values(messages).sort((a,b) => a.timestamp - b.timestamp).forEach(msg => {
+            const div = document.createElement('div');
+            div.className = `message ${msg.senderId === currentUser.uid ? 'sent' : 'received'}`;
+            if (msg.imageUrl) {
+                div.innerHTML = `<img src="${msg.imageUrl}" onclick="openFullImage('${msg.imageUrl}')">`;
+            } else {
+                div.innerHTML = msg.text || '';
+            }
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+function openFullImage(url) {
+    const modal = document.createElement('div');
+    modal.style = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:5000;display:flex;align-items:center;justify-content:center;`;
+    modal.innerHTML = `<img src="${url}" style="max-width:95%;max-height:95%;border-radius:12px;"><div onclick="this.parentElement.remove()" style="position:absolute;top:20px;right:20px;color:white;font-size:40px;cursor:pointer;">✕</div>`;
+    document.body.appendChild(modal);
+}
+
+// অন্যান্য ফাংশন (showCreateGroupModal, closeModal, startGaleneCall, handleImageSelect ইত্যাদি) আগের কোড থেকে রাখুন
 </script>
 </body>
 </html>
