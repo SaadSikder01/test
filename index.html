@@ -209,35 +209,62 @@ async function createGroup() {
 }
 
 // ==================== ইউজারের গ্রুপ লোড ====================
+// ==================== স্মার্ট গ্রুপ লিস্ট ====================
 function loadUserGroups() {
     const container = document.getElementById('groupList');
+    
     db.ref(`userGroups/${currentUser.uid}`).on('value', async (snapshot) => {
         container.innerHTML = '';
-        const groups = snapshot.val() || {};
-        
-        if (Object.keys(groups).length === 0) {
-            container.innerHTML = `<p style="color:#888;padding:30px;text-align:center;">কোনো গ্রুপ নেই। নতুন গ্রুপ তৈরি করুন।</p>`;
-            return;
-        }
+        const userGroupIds = snapshot.val() || {};
+        let groupsArray = [];
 
-        for (let groupId in groups) {
-            const g = await db.ref(`groups/${groupId}`).once('value');
-            const group = g.val();
+        for (let groupId in userGroupIds) {
+            const groupSnap = await db.ref(`groups/${groupId}`).once('value');
+            const group = groupSnap.val();
             if (!group) continue;
 
+            // লাস্ট মেসেজ পড়া
+            const lastMsgSnap = await db.ref(`messages/${groupId}`).limitToLast(1).once('value');
+            let lastMessage = "";
+            let lastTimestamp = group.createdAt || 0;
+
+            lastMsgSnap.forEach(child => {
+                const msg = child.val();
+                lastMessage = msg.text || (msg.imageUrl ? "📷 ছবি" : "");
+                lastTimestamp = msg.timestamp || lastTimestamp;
+            });
+
+            groupsArray.push({
+                id: groupId,
+                ...group,
+                lastMessage: lastMessage,
+                lastTimestamp: lastTimestamp
+            });
+        }
+
+        // সর্বশেষ মেসেজ অনুযায়ী সর্ট করা
+        groupsArray.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+
+        groupsArray.forEach(group => {
             const div = document.createElement('div');
             div.className = 'group-item';
             div.innerHTML = `
                 <div class="group-avatar">
                     ${group.avatarUrl ? `<img src="${group.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">` : group.name[0]}
                 </div>
-                <div>
+                <div style="flex:1; min-width:0;">
                     <div style="font-weight:600;">${group.name}</div>
-                    <div style="font-size:13px;color:#aaa;">${group.groupId}</div>
+                    <div style="font-size:13px; color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${group.lastMessage || "কোনো মেসেজ নেই"}
+                    </div>
                 </div>
             `;
-            div.onclick = () => openGroup(groupId, group);
+            div.onclick = () => openGroup(group.id, group);
             container.appendChild(div);
+        });
+
+        if (groupsArray.length === 0) {
+            container.innerHTML = `<p style="color:#888;padding:30px;text-align:center;">কোনো গ্রুপ নেই। নতুন গ্রুপ তৈরি করুন।</p>`;
         }
     });
 }
